@@ -20,7 +20,7 @@ pub fn sequence_collection_from_bufread<T: BufRead>(mut reader: T) -> Result<Seq
         if len == 0 || line.starts_with(">") {
             match &current_id {
                 Some(id) => {
-                    msa.add(AnnotatedSequence::new(id.clone(), current_sequence.join(""))).unwrap();
+                    msa.add(AnnotatedSequence::from_string(id.clone(), current_sequence.join(""))).unwrap();
                 },
                 None => ()
             };
@@ -56,7 +56,7 @@ pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(seqs: T1, writ
     let mut bw = BufWriter::new(writer);
     for annseq in seqs.iter(){
         bw.write_fmt(format_args!(">{}\n", annseq.id()))?;
-        bw.write_fmt(format_args!("{}\n",annseq.seq().unwrap()))?;
+        bw.write_fmt(format_args!("{}\n",annseq.seq_as_string()))?;
     };
     Ok(())
 }
@@ -67,9 +67,9 @@ fn test_alignment_from_bufread() {
     let b = input.as_bytes();
     let msa = sequence_collection_from_bufread(b).unwrap();
     assert_eq!(msa.get(0).unwrap().id(), "S1");
-    assert_eq!(msa.get(0).unwrap().seq().unwrap(), String::from("ATCTCG"));
+    assert_eq!(*msa.get(0).unwrap().seq().unwrap(), vec!['A', 'T', 'C', 'T', 'C', 'G']);
     assert_eq!(msa.get(1).unwrap().id(), "S2");
-    assert_eq!(msa.get(1).unwrap().seq().unwrap(), String::from("TCTCGA"));
+    assert_eq!(*msa.get(1).unwrap().seq().unwrap(), vec!['T', 'C', 'T', 'C', 'G', 'A']);
     assert_eq!(msa.get(2).unwrap().id(), "S3");
-    assert_eq!(msa.get(2).unwrap().seq().unwrap(), String::from("ATGTAG"));
+    assert_eq!(*msa.get(2).unwrap().seq().unwrap(), vec!['A', 'T', 'G', 'T', 'A', 'G']);
 }

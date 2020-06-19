@@ -18,21 +18,28 @@ pub mod seqs {
     #[derive(Clone, PartialEq, Debug)]
     pub struct AnnotatedSequence {
         id: String ,
-        sequence: Option<String>
+        sequence: Option<Vec<char>>
     }
 
     impl AnnotatedSequence {
         /// Creates a new AnnotatedSequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// assert_eq!(a.id() , "S1");
-        /// assert_eq!(a.seq() , Some("ATCATGCTACTG"));
+        /// let a = AnnotatedSequence::new(String::from("S1"), vec!['A', 'T', 'C', 'A', 'T', 'G', 'C', 'T', 'A', 'C', 'T', 'G']);
+        /// assert_eq!(a.id(), "S1");
+        /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C', 'A', 'T', 'G', 'C', 'T', 'A', 'C', 'T', 'G']));
         /// ```
-        pub fn new(id: String, sequence: String) -> Self {
+        pub fn new(id: String, sequence: Vec<char>) -> Self {
             AnnotatedSequence{
                 id,
                 sequence:Some(sequence)
+            }
+        }
+
+        pub fn from_string(id: String, sequence: String) -> Self {
+            AnnotatedSequence{
+                id,
+                sequence:Some(sequence.chars().collect::<Vec<char>>())
             }
         }
 
@@ -53,31 +60,40 @@ pub mod seqs {
         /// Set or change sequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let mut a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// assert_eq!(a.seq() , Some("ATCATGCTACTG"));
-        /// a.set_sequence(String::from("GGGG"));
-        /// assert_eq!(a.seq() , Some("GGGG"));
+        /// let mut a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATC"));
+        /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C']));
+        /// a.set_sequence(vec!['G', 'G', 'G']);
+        /// assert_eq!(a.seq(), Some(&vec!['G', 'G', 'G']));
         /// 
         /// let mut b = AnnotatedSequence::empty(String::from("S1"));
-        /// assert_eq!(b.seq() , None);
-        /// b.set_sequence(String::from("GGGG"));
-        /// assert_eq!(b.seq() , Some("GGGG"));
+        /// assert_eq!(b.seq(), None);
+        /// b.set_sequence(vec!['G', 'G', 'G']);
+        /// assert_eq!(b.seq(), Some(&vec!['G', 'G', 'G']));
         /// 
         /// ```
-        pub fn set_sequence(&mut self, seq: String) -> () {
+        pub fn set_sequence(&mut self, seq: Vec<char>) -> () {
             self.sequence = Some(seq);
         }
 
+        pub fn set_sequence_as_string(&mut self, seq: String) -> () {
+            if seq.len() == 0 {
+                self.sequence = None;
+            } else {
+                self.sequence = Some(seq.chars().collect());
+            }
+            
+        }
+        
         /// Moves out the sequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let mut a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// assert_eq!(a.seq(), Some("ATCATGCTACTG"));
+        /// let mut a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATC"));
+        /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C']));
         /// let b = a.take_sequence();
         /// assert_eq!(a.seq() , None);
-        /// assert_eq!(b , Some(String::from("ATCATGCTACTG")));
+        /// assert_eq!(b , Some(vec!['A', 'T', 'C']));
         /// ```
-        pub fn take_sequence(&mut self) -> Option<String> {
+        pub fn take_sequence(&mut self) -> Option<Vec<char>> {
             self.sequence.take()
         }
         
@@ -96,13 +112,20 @@ pub mod seqs {
         /// Retrieves a reference of the sequence.
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCG"));
-        /// assert_eq!(a.seq() , Some("ATCG"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCG"));
+        /// assert_eq!(a.seq() , Some(&vec!['A', 'T', 'C', 'G']));
         /// ```
-        pub fn seq(&self) -> Option<&str> {
+        pub fn seq(&self) -> Option<&Vec<char>> {
             match &self.sequence {
                 None => None, 
                 Some(x) => Some(&x)
+            }
+        }
+
+        pub fn seq_as_string(&self) -> String {
+            match &self.sequence {
+                None => String::from(""), 
+                Some(x) => x.iter().collect::<String>()
             }
         }
 
@@ -111,9 +134,9 @@ pub mod seqs {
         /// use famlib::seqs::AnnotatedSequence;
         /// let mut a = AnnotatedSequence::empty(String::from("S1"));
         /// assert_eq!(a.len(), 0);
-        /// a.set_sequence(String::from("ATCG"));
+        /// a.set_sequence_as_string(String::from("ATCG"));
         /// assert_eq!(a.len(), 4);
-        /// a.set_sequence(String::from("AT"));
+        /// a.set_sequence_as_string(String::from("AT"));
         /// assert_eq!(a.len(), 2);
         /// ```
         pub fn len(&self) -> usize {
@@ -128,11 +151,11 @@ pub mod seqs {
         /// use famlib::seqs::AnnotatedSequence;
         /// let mut a = AnnotatedSequence::empty(String::from("S1"));
         /// assert!(a.seq_copy().is_err());
-        /// a.set_sequence(String::from("ATCG"));
-        /// assert_eq!(a.seq_copy().unwrap(), String::from("ATCG"));
-        /// assert_eq!(a.seq(), Some("ATCG"));
+        /// a.set_sequence(vec!['A', 'T', 'C', 'G']);
+        /// assert_eq!(a.seq_copy().unwrap(), vec!['A', 'T', 'C', 'G']);
+        /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C', 'G']));
         /// ```
-        pub fn seq_copy(&self) -> Result<String, String> {
+        pub fn seq_copy(&self) -> Result<Vec<char>, String> {
             match &self.sequence {
                 None => Err(String::from("Sequence is empty")),
                 Some(x) => Ok(x.clone())
@@ -142,13 +165,12 @@ pub mod seqs {
         /// Gets a reference of the id
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let a = AnnotatedSequence::new(String::from("S1"), vec!['A']);
         /// assert_eq!(a.id() , "S1");
         /// ```
         pub fn id(&self) -> &str {
             &self.id
         }
-
     }
 
     #[derive(Clone, PartialEq)]
@@ -191,9 +213,9 @@ pub mod seqs {
     impl SequenceAccesors for SequenceCollection {
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// let b = AnnotatedSequence::new(String::from("S2"), String::from("TAGTACGATGAC"));
-        /// let c = AnnotatedSequence::new(String::from("S3"), String::from("TAGTACGATGAC"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        /// let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// seqs.add(b);
@@ -212,8 +234,8 @@ pub mod seqs {
 
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// let b = AnnotatedSequence::new(String::from("S2"), String::from("TAGTACGATGAC"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// seqs.add(b);
@@ -232,7 +254,7 @@ pub mod seqs {
 
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// assert_eq!(seqs.size(), 0);
         /// seqs.add(a);
@@ -244,7 +266,7 @@ pub mod seqs {
 
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// assert_eq!(seqs.get(0).unwrap().id(), String::from("S1"));
@@ -255,7 +277,7 @@ pub mod seqs {
 
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// let b = seqs.remove(&String::from("S1")).unwrap();
@@ -281,9 +303,9 @@ pub mod seqs {
 
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// let b = AnnotatedSequence::new(String::from("S2"), String::from("TAGTACGATGAC"));
-        /// let c = AnnotatedSequence::new(String::from("S3"), String::from("TAGTACGATGAC"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        /// let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// seqs.add(b);
@@ -327,17 +349,17 @@ pub mod seqs {
         /// Make A gapstripped copy of the alignment
         /// ```
         /// use famlib::seqs::{SequenceCollection, Alignment, SequenceAccesors, AnnotatedSequence};
-        /// let a = AnnotatedSequence::new(String::from("S1"), String::from("A--A--C--C--"));
-        /// let b = AnnotatedSequence::new(String::from("S2"), String::from("TAGTACGATGAC"));
-        /// let c = AnnotatedSequence::new(String::from("S3"), String::from("TAGTACGATGAC"));
+        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
+        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        /// let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
         /// let mut seqs = Alignment::new();
         /// seqs.add(a);
         /// seqs.add(b);
         /// seqs.add(c);
         /// let gs = seqs.gapstrip();
         /// assert_eq!(gs.length(), 4);
-        /// assert_eq!(gs.get(0).unwrap().seq().unwrap(), "AACC");
-        /// assert_eq!(gs.get(1).unwrap().seq().unwrap(), "TTGG");
+        /// assert_eq!(gs.get(0).unwrap().seq().unwrap(), &vec!['A', 'A', 'C', 'C']);
+        /// assert_eq!(gs.get(1).unwrap().seq().unwrap(), &vec!['T', 'T', 'G', 'G']);
         /// ```
         pub fn gapstrip(&self) -> Self {
             let reference = self.get(0).unwrap().seq().unwrap();
@@ -345,20 +367,57 @@ pub mod seqs {
             let new_seq_iter = self.seqs.sequences
                 .iter()
                 .map(|x| (
-                    reference.chars()
-                            .zip(x.seq().unwrap().chars())
-                            .filter_map(|(a, b)| if a != '-' {Some(b)} else {None})
+                    reference.iter()
+                            .zip(x.seq().unwrap())
+                            .filter_map(|(a, b)| if *a != '-' {Some(b)} else {None})
                             .collect::<String>(),
                     x.id.clone()));
             for (new_seq, new_id) in new_seq_iter{
-                aln.add(AnnotatedSequence::new(new_id, new_seq)).unwrap();
+                aln.add(AnnotatedSequence::from_string(new_id, new_seq)).unwrap();
             };
             aln
         }
+
+        /// Return the number of columns of the MSA
         pub fn length(&self) -> usize {
             match self.length {
                 None => 0,
                 Some(x) => x
+            }
+        }
+
+        pub fn column(&self, index: usize) -> Option<Vec<char>> {
+            if self.length() > index {
+                Some(self.seqs.iter().map(|x| x.seq().unwrap()[index]).collect::<Vec<char>>())
+            } else {
+                None
+            }
+        }
+
+        pub fn column_ref(&self, index: usize) -> Option<Vec<&char>> {
+            if self.length() > index {
+                Some(self.seqs.iter().map(|x| &x.seq().unwrap()[index]).collect())
+            } else {
+                None
+            }
+        }
+
+        pub fn columns(&self) -> ColumnIterable {
+            ColumnIterable{
+                msa: &self,
+                next:0
+            }
+        }
+
+        pub fn col_gap_frq(&self) -> Option<Vec<f64>> {
+            if self.size()>0 {
+            Some(self.columns()
+                .map(|x| {
+                    x.iter()
+                     .fold(0f64, |a, b| a + if **b == '-' {1f64} else {0f64}) / self.size() as f64
+                }).collect::<Vec<f64>>())
+            } else {
+                None
             }
         }
     }
@@ -425,9 +484,9 @@ pub mod seqs {
     }
     #[test]
     fn teste_sequence_iterator() {
-        let a = AnnotatedSequence::new(String::from("S1"), String::from("A--A--C--C--"));
-        let b = AnnotatedSequence::new(String::from("S2"), String::from("TAGTACGATGAC"));
-        let c = AnnotatedSequence::new(String::from("S3"), String::from("TAGTACGATGAC"));
+        let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
+        let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
         let mut seqs = Alignment::new();
         seqs.add(a).unwrap();
         seqs.add(b).unwrap();
@@ -436,4 +495,47 @@ pub mod seqs {
             assert_eq!(x.len(), 12);
         }
     }
+
+    pub struct ColumnIterable<'msa> {
+        msa: &'msa Alignment,
+        next: usize
+    }
+
+    impl<'msa> Iterator for ColumnIterable<'msa> {
+        type Item = Vec<&'msa char>;
+        fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+            if self.msa.length() > 0 {
+                if self.next < self.msa.length() {
+                    let current = self.msa.column_ref(self.next);
+                    self.next += 1;
+                    current
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+    }
+
+    #[test]
+    fn teste_column_iterator() {
+        let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
+        let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
+        let mut seqs = Alignment::new();
+        seqs.add(a).unwrap();
+        seqs.add(b).unwrap();
+        seqs.add(c).unwrap();
+        let clms = seqs.columns().collect::<Vec<Vec<&char>>>();
+        for x in seqs.columns() {
+            println!("{:?}", x); 
+        }
+        assert_eq!(clms[0], vec![&'A', &'T', &'T']);
+        assert_eq!(clms[1], vec![&'-', &'A', &'A']);
+        assert_eq!(clms[11], vec![&'-', &'C', &'C']);
+
+    }
+
+
 }
