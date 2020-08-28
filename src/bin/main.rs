@@ -102,7 +102,7 @@ pub fn collect_command(ds: DataSink) -> io::Result<()> {
 
 pub fn main() -> io::Result<()> {
     let matches = App::new("Fasta Alignment Manipulator")
-                        .version("0.0.1")
+                        .version("0.0.2-dev")
                         .author("Javier A. Iserte <jiserte@leloir.org.ar>")
                         .about("Does many common manipulation of fasta files.")
                         .subcommand(SubCommand::with_name("dimensions")
