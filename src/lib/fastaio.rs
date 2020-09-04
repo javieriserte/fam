@@ -61,15 +61,21 @@ pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(seqs: T1, writ
     Ok(())
 }
 
-#[test]
-fn test_alignment_from_bufread() {
-    let input = ">S1\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
-    let b = input.as_bytes();
-    let msa = sequence_collection_from_bufread(b).unwrap();
-    assert_eq!(msa.get(0).unwrap().id(), "S1");
-    assert_eq!(*msa.get(0).unwrap().seq().unwrap(), vec!['A', 'T', 'C', 'T', 'C', 'G']);
-    assert_eq!(msa.get(1).unwrap().id(), "S2");
-    assert_eq!(*msa.get(1).unwrap().seq().unwrap(), vec!['T', 'C', 'T', 'C', 'G', 'A']);
-    assert_eq!(msa.get(2).unwrap().id(), "S3");
-    assert_eq!(*msa.get(2).unwrap().seq().unwrap(), vec!['A', 'T', 'G', 'T', 'A', 'G']);
+mod test {
+    #[allow(unused_imports)]
+    use crate::fastaio::sequence_collection_from_bufread;
+    #[allow(unused_imports)]
+    use crate::seqs::{SequenceCollection, SequenceAccesors};
+    #[test]
+    fn test_sequence_collection_from_bufread_when_ok() {
+        let input = ">S1\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
+        let b = input.as_bytes();
+        let msa = sequence_collection_from_bufread(b).unwrap();
+        assert_eq!(msa.get(0).unwrap().id(), "S1");
+        assert_eq!(*msa.get(0).unwrap().seq().unwrap(), vec!['A', 'T', 'C', 'T', 'C', 'G']);
+        assert_eq!(msa.get(1).unwrap().id(), "S2");
+        assert_eq!(*msa.get(1).unwrap().seq().unwrap(), vec!['T', 'C', 'T', 'C', 'G', 'A']);
+        assert_eq!(msa.get(2).unwrap().id(), "S3");
+        
+    }
 }

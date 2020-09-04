@@ -44,26 +44,56 @@ pub enum DataSink{
     FilePath(String)
 }
 
+impl DataSink {
+    pub fn write_fasta<T: SequenceAccesors>(&self, seqs: T) -> io::Result<()> {
+        match self {
+            DataSink::StdOut => {
+                write_sequence_collection(seqs, stdout().lock())
+            },
+            DataSink::FilePath(x) => {
+                let file = File::create(x).unwrap();
+                write_sequence_collection(seqs, file)
+            }
+        }
+    }
+}
+
+pub fn pop_command (
+    fs: DataSource,
+    fo: DataSink,
+    id: String
+) -> io::Result<()> {
+    let mut input = fs.get_sequence_collection().unwrap();
+    let seqs = input.move_up(&id);
+    match seqs {
+        Ok(_) => {fo.write_fasta(input)},
+        Err(x) => {
+            return Err(
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Could not pop reference {}.\n", x)
+                )
+            )
+        }
+    }
+}
+
 pub fn gapstrip_command(fs: DataSource, fo: DataSink) -> io::Result<()> {
     let input = fs.get_sequence_collection().unwrap();
     let msa = match input.to_msa() {
         Ok(x) => x,
         Err(_) => {
-            return Err(std::io::Error::new(ErrorKind::Other, "Input needs to be an alignment. All sequences should be the same length.\n"));
+            return Err(
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    "Input needs to be an alignment. \
+                    All sequences should be the same length.\n"
+                )
+            );
         }
     };
     let msa = msa.gapstrip();
-    match fo {
-        DataSink::StdOut => {
-            write_sequence_collection(msa, stdout().lock())?
-        },
-        DataSink::FilePath(x) => {
-            let file = File::create(x).unwrap();
-            write_sequence_collection(msa, file)?
-        }
-
-    }
-    Ok(())
+    fo.write_fasta(msa)
 }
 
 pub fn dimension_command(fs: DataSource, expanded:bool) -> io::Result<()> {
@@ -102,37 +132,53 @@ pub fn collect_command(ds: DataSink) -> io::Result<()> {
 
 pub fn main() -> io::Result<()> {
     let matches = App::new("Fasta Alignment Manipulator")
-                        .version("0.0.2-dev")
-                        .author("Javier A. Iserte <jiserte@leloir.org.ar>")
-                        .about("Does many common manipulation of fasta files.")
-                        .subcommand(SubCommand::with_name("dimensions")
-                                    .about("Get the dimensions of the fasta file")
-                                    .arg(Arg::with_name("input")
-                                        .help("Input file")
-                                        .takes_value(true))
-                                    .arg(Arg::with_name("expanded")
-                                        .short("e")
-                                        .long("expanded")
-                                        .help("Show width of all sequences")))
-                        .subcommand(SubCommand::with_name("collect")
-                                    .about("Get sequences from stdin and writes to a file.")
-                                    .arg(Arg::with_name("output")
-                                        .help("Output file")
-                                        .takes_value(true)
-                                        .required(true)))
-                        .subcommand(SubCommand::with_name("gapstrip")
-                                    .about("Gapstrip an alignment")
-                                    .arg(Arg::with_name("input")
-                                        .short("i")
-                                        .long("in")
-                                        .takes_value(true)
-                                        .help("Input file to be gapstripped"))
-                                    .arg(Arg::with_name("output")
-                                        .short("o")
-                                        .long("out")
-                                        .takes_value(true)
-                                        .help("Output file to be gapstripped")))
-                          .get_matches();
+        .version("0.0.2-dev")
+        .author("Javier A. Iserte <jiserte@leloir.org.ar>")
+        .about("Does many common manipulation of fasta files.")
+        .subcommand(SubCommand::with_name("dimensions")
+                    .about("Get the dimensions of the fasta file")
+                    .arg(Arg::with_name("input")
+                        .help("Input file")
+                        .takes_value(true))
+                    .arg(Arg::with_name("expanded")
+                        .short("e")
+                        .long("expanded")
+                        .help("Show width of all sequences")))
+        .subcommand(SubCommand::with_name("collect")
+                    .about("Get sequences from stdin and writes to a file.")
+                    .arg(Arg::with_name("output")
+                        .help("Output file")
+                        .takes_value(true)
+                        .required(true)))
+        .subcommand(SubCommand::with_name("gapstrip")
+                    .about("Gapstrip an alignment")
+                    .arg(Arg::with_name("input")
+                        .short("i")
+                        .long("in")
+                        .takes_value(true)
+                        .help("Input file to be gapstripped"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("Output file to be gapstripped")))
+        .subcommand(SubCommand::with_name("pop")
+                    .about("Moves a sequence to the top")
+                    .arg(Arg::with_name("input")
+                        .short("i")
+                        .long("in")
+                        .takes_value(true)
+                        .help("Input file"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("Output file"))
+                    .arg(Arg::with_name("id")
+                        .long("id")
+                        .takes_value(true)
+                        .help("The Id of the sequence to be popped")))
+        .get_matches();
 
     if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
         let input = match gsmatches.value_of("input") {
