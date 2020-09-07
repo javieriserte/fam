@@ -1,18 +1,45 @@
 pub mod fastaio;
+pub mod merge;
 
 pub mod seqs {
+    use std::fmt::{Display, Error, Formatter};
     use std::collections::HashSet;
 
-    pub trait SequenceAccesors {
-        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),String> ;
-        fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
-        fn remove(&mut self, id: &String) -> Option<AnnotatedSequence>;
-        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(),String>;
-        fn size(&self) -> usize;
-        fn move_up(&mut self, id: &String) -> Result<(), String>;
-        fn iter(&self) -> SequenceIterable;
+    #[derive(Debug)]
+    pub enum SeqError{
+        DuplicatedId(String),
+        DifferentLength,
+        NonExistenId(String),
+        MissingID(String)
+    }
+    impl Display for SeqError{
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+            match self{
+                SeqError::DuplicatedId(x) => write!(f,
+                    "Attempted to add a sequence with a \
+                    duplicated ID ['{}'].", x),
+                SeqError::NonExistenId(x) => write!(f,
+                    "Attempted to get a non existing ID [{}].", x),
+                SeqError::DifferentLength => write!(f,
+                    "Attempted to add a sequence with \
+                    different length to a MSA."),
+                SeqError::MissingID(x) => write!(f,
+                    "A sequence with ID [{}] is required", x)
+            }
+        }
     }
 
+    pub trait SequenceAccesors {
+        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError> ;
+        fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
+        fn remove(&mut self, id: &String) -> Option<AnnotatedSequence>;
+        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError>;
+        fn size(&self) -> usize;
+        fn move_up(&mut self, id: &String) -> Result<(), SeqError>;
+        fn iter(&self) -> SequenceIterable;
+        fn contains(&self, id: &str) -> bool;
+        fn take(&mut self, id: &str) -> Option<AnnotatedSequence>;
+    }
 
     /// Struct to represent a single sequence of a MSA
     #[derive(Clone, PartialEq, Debug)]
@@ -176,7 +203,8 @@ pub mod seqs {
     #[derive(Clone, PartialEq)]
     pub struct SequenceCollection {
         sequences: Vec<AnnotatedSequence>,
-        ids: HashSet<String>
+        ids: HashSet<String> // TODO: replace with a hashmap to the
+                             // sequence indexes.
     }
 
     impl SequenceCollection {
@@ -211,6 +239,9 @@ pub mod seqs {
     }
 
     impl SequenceAccesors for SequenceCollection {
+        // fn contains(&self, id: &str) -> bool{
+        //     self.ids.contains(id)
+        // }
         /// ```
         /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
         /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
@@ -222,9 +253,10 @@ pub mod seqs {
         /// seqs.add_on_top(c);
         /// assert_eq!(seqs.get(0).unwrap().id(), "S3");
         /// ```
-        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(), String> {
+        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(), SeqError> {
             if self.ids.contains(&seq.id().to_string()) {
-                Err(String::from("Repeated ID."))
+                Err(SeqError::DuplicatedId(String::from(seq.id())))
+                // Err(String::from("Repeated ID."))
             } else {
                 self.ids.insert(seq.id().to_string());
                 self.sequences.insert(0, seq);
@@ -242,9 +274,9 @@ pub mod seqs {
         /// assert_eq!(seqs.get(0).unwrap().id(), "S1");
         /// assert_eq!(seqs.get(1).unwrap().id(), "S2");
         /// ```
-        fn add(&mut self, seq: AnnotatedSequence) -> Result<(), String> {
+        fn add(&mut self, seq: AnnotatedSequence) -> Result<(), SeqError> {
             if self.ids.contains(&seq.id().to_string()) {
-                Err(String::from("Repeated ID."))
+                Err(SeqError::DuplicatedId(seq.id().to_string()))
             } else {
                 self.ids.insert(seq.id().to_string());
                 self.sequences.push(seq);
@@ -318,18 +350,31 @@ pub mod seqs {
         /// assert_eq!(seqs.get(1).unwrap().id(), "S1");
         /// assert_eq!(seqs.get(2).unwrap().id(), "S2");
         /// ```
-        fn move_up(&mut self, id: &String) -> Result<(), String>{
+        fn move_up(&mut self, id: &String) -> Result<(), SeqError>{
             match self.remove(id) {
-                None => Err(String::from("ID not exists")),
-                Some(x) => {
-                    self.add_on_top(x)
-                }
+                None => Err(SeqError::NonExistenId(id.to_string())),
+                Some(x) => self.add_on_top(x)
             }
         }    
         fn iter(&self) -> SequenceIterable<'_> { 
             SequenceIterable{
                 sequences: &self,
                 next:0
+            }
+        }
+        fn contains(&self, id: &str) -> bool {
+            self.ids.contains(id)
+        }
+        fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
+            if self.contains(id) {
+                for (i, s) in self.sequences.iter().enumerate() {
+                    if s.id() == id {
+                        return Some(self.sequences.remove(i));
+                    }
+                };
+                None
+            } else {
+                None
             }
         }
     }
@@ -423,13 +468,13 @@ pub mod seqs {
     }
 
     impl SequenceAccesors for Alignment {
-        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),String> {
+        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError> {
             match self.length {
                 Some(x) => {
                     if x == seq.len() {
                         self.seqs.add(seq)
                     } else {
-                        Err(format!("Sequence {} has no the same length than the previous sequence", seq.id()))
+                        Err(SeqError::DifferentLength)
                     }
                 },
                 None => {
@@ -447,10 +492,10 @@ pub mod seqs {
         fn remove(&mut self, id: &String) -> Option<AnnotatedSequence> {
             self.seqs.remove(id)
         }
-        fn add_on_top(&mut self, sequence: AnnotatedSequence) -> Result<(), String> {
+        fn add_on_top(&mut self, sequence: AnnotatedSequence) -> Result<(), SeqError> {
             self.seqs.add_on_top(sequence)
         }
-        fn move_up(&mut self, id: &String) -> Result<(), String> {
+        fn move_up(&mut self, id: &String) -> Result<(), SeqError> {
             self.seqs.move_up(id)
         }
         fn iter(&self) -> SequenceIterable<'_> { 
@@ -459,12 +504,20 @@ pub mod seqs {
                 next:0
             }
         }
+        fn contains(&self, id: &str) -> bool {
+            self.seqs.ids.contains(id)
+        }
+        fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
+            self.seqs.take(id)
+        }
     }
 
     pub struct SequenceIterable<'seqcol>{
         sequences: &'seqcol SequenceCollection,
         next: usize,
     }
+
+    
 
     impl<'a> Iterator for SequenceIterable<'a> {
         type Item = &'a AnnotatedSequence;
@@ -528,14 +581,9 @@ pub mod seqs {
         seqs.add(b).unwrap();
         seqs.add(c).unwrap();
         let clms = seqs.columns().collect::<Vec<Vec<&char>>>();
-        for x in seqs.columns() {
-            println!("{:?}", x); 
-        }
         assert_eq!(clms[0], vec![&'A', &'T', &'T']);
         assert_eq!(clms[1], vec![&'-', &'A', &'A']);
         assert_eq!(clms[11], vec![&'-', &'C', &'C']);
 
     }
-
-
 }

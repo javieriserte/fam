@@ -14,7 +14,9 @@ use famlib::fastaio::{
     sequence_collection_from_stdin,
     sequence_collection_from_file,
     write_sequence_collection};
+use famlib::merge::{join, concat};
 
+#[derive(Debug)]
 pub struct DataSource{
     pub stdin: bool,
     pub filepath: Option<String>
@@ -37,6 +39,18 @@ impl DataSource {
             false => format!("File: {}", self.filepath.clone().unwrap())
         }
     }
+    pub fn from(path :&str) -> Self {
+        DataSource{
+            stdin:false,
+            filepath: Some(String::from(path))
+        }
+    }
+    pub fn stdin() -> Self {
+        DataSource{
+            stdin:true,
+            filepath:None
+        }
+    }
 }
 
 pub enum DataSink{
@@ -50,6 +64,15 @@ impl DataSink {
             DataSink::StdOut => {
                 write_sequence_collection(seqs, stdout().lock())
             },
+            DataSink::FilePath(x) => {
+                let file = File::create(x).unwrap();
+                write_sequence_collection(seqs, file)
+            }
+        }
+    }
+    pub fn write_to_file<T: SequenceAccesors>(&self, seqs: T) -> io::Result<()>{
+        match self {
+            DataSink::StdOut => panic!("This should be not reachable"),
             DataSink::FilePath(x) => {
                 let file = File::create(x).unwrap();
                 write_sequence_collection(seqs, file)
@@ -121,13 +144,36 @@ pub fn dimension_command(fs: DataSource, expanded:bool) -> io::Result<()> {
 
 pub fn collect_command(ds: DataSink) -> io::Result<()> {
     let msa = sequence_collection_from_stdin()?;
-    match ds {
-        DataSink::StdOut => panic!("This should be not reachable"),
-        DataSink::FilePath(x) => {
-            let file = File::create(x).unwrap();
-            write_sequence_collection(msa, file)
-        }
+    ds.write_to_file(msa)
+}
+
+/// Join two or more sequence collections into one.
+/// 
+pub fn join_command(dss: Vec<DataSource>, sink: DataSink) -> io::Result<()> {
+    let seqcols = dss
+        .iter()
+        .map(|x| 
+            x.get_sequence_collection().unwrap())
+        .collect::<Vec<_>>();
+    match join(seqcols) {
+        Ok(x) => sink.write_fasta(x)?,
+        Err(x) => eprintln!("{}", x)
     }
+    Ok(())
+}
+
+//
+pub fn concat_command(dss: Vec<DataSource>, sink: DataSink) -> io::Result<()> {
+    let seqcols = dss
+        .iter()
+        .map(|x|
+            x.get_sequence_collection().unwrap())
+        .collect::<Vec<_>>();
+    match concat(seqcols) {
+        Ok(x) => sink.write_fasta(x)?,
+        Err(x) => eprintln!("{}", x)
+    }
+    Ok(())
 }
 
 pub fn main() -> io::Result<()> {
@@ -178,18 +224,34 @@ pub fn main() -> io::Result<()> {
                         .long("id")
                         .takes_value(true)
                         .help("The Id of the sequence to be popped")))
-        .get_matches();
+        .subcommand(SubCommand::with_name("join")
+                    .about("Joins (merge vertically) two sequence collections into one file")
+                    .arg(Arg::with_name("input")
+                        .min_values(2)
+                        .takes_value(true)
+                        .help("A list of comma separated input files"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("Output file")))
+        .subcommand(SubCommand::with_name("concat")
+                    .about("Concatenates (merge horizontally) two sequence collections into one file")
+                    .arg(Arg::with_name("input")
+                        .min_values(2)
+                        .takes_value(true)
+                        .help("A list of comma separated input files"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("Output file")))
+            .get_matches();
 
     if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
         let input = match gsmatches.value_of("input") {
-            None => DataSource{
-                stdin: true,
-                filepath: None
-            },
-            Some(x) => DataSource{
-                stdin: false,
-                filepath: Some(x.to_string())
-            }
+            None => DataSource::stdin(),
+            Some(x) => DataSource::from(&x)
         };
         let output = match gsmatches.value_of("output") {
             None => {DataSink::StdOut},
@@ -199,14 +261,8 @@ pub fn main() -> io::Result<()> {
     };
     if let Some(dimatches) = matches.subcommand_matches("dimensions") {
         let input = match dimatches.value_of("input") {
-            None => DataSource{
-                stdin: true,
-                filepath: None
-            },
-            Some(x) => DataSource{
-                stdin: false,
-                filepath: Some(x.to_string())
-            }
+            None => DataSource::stdin(),
+            Some(x) => DataSource::from(&x)
         };
         let expanded = dimatches.is_present("expanded");
         return dimension_command(input, expanded);
@@ -216,5 +272,29 @@ pub fn main() -> io::Result<()> {
         let ds = DataSink::FilePath(input.to_string());
         return collect_command(ds);
     };
+
+    if let Some(m) = matches.subcommand_matches("join") {
+        let inputs = m.values_of("input").unwrap();
+        let files: Vec<DataSource> = inputs
+            .map(|x| DataSource::from(x))
+            .collect();
+        let sink = match m.value_of("output") {
+            None => DataSink::StdOut,
+            Some(x) => DataSink::FilePath(x.to_string())
+        };
+        return join_command(files, sink);
+    }
+
+    if let Some(m) = matches.subcommand_matches("concat") {
+        let inputs = m.values_of("input").unwrap();
+        let files: Vec<DataSource> = inputs
+            .map(|x| DataSource::from(x))
+            .collect();
+        let sink = match m.value_of("output") {
+            None => DataSink::StdOut,
+            Some(x) => DataSink::FilePath(x.to_string())
+        };
+        return concat_command(files, sink);
+    }
     Ok(())
 }
