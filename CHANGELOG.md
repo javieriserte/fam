@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+[#2] - 2020-09-07 Add Join and concat functions
+[#1] - 2020-09-07 Pop Reference
+
 ## Current Version
 
 - Versión 0.0.2-dev - 2020-06-14
