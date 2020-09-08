@@ -4,6 +4,7 @@ pub mod merge;
 pub mod seqs {
     use std::fmt::{Display, Error, Formatter};
     use std::collections::HashSet;
+    use std::iter::{IntoIterator, Iterator};
 
     #[derive(Debug)]
     pub enum SeqError{
@@ -38,7 +39,7 @@ pub mod seqs {
         fn move_up(&mut self, id: &String) -> Result<(), SeqError>;
         fn iter(&self) -> SequenceIterable;
         fn contains(&self, id: &str) -> bool;
-        fn take(&mut self, id: &str) -> Option<AnnotatedSequence>;
+        fn take_first(&mut self) -> Option<AnnotatedSequence>;
     }
 
     /// Struct to represent a single sequence of a MSA
@@ -365,22 +366,74 @@ pub mod seqs {
         fn contains(&self, id: &str) -> bool {
             self.ids.contains(id)
         }
-        fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
-            if self.contains(id) {
-                for (i, s) in self.sequences.iter().enumerate() {
-                    if s.id() == id {
-                        return Some(self.sequences.remove(i));
-                    }
-                };
-                None
+
+        // fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
+        //     if self.contains(id) {
+        //         for (i, s) in self.sequences.iter().enumerate() {
+        //             if s.id() == id {
+        //                 return Some(self.sequences.remove(i));
+        //             }
+        //         };
+        //         None
+        //     } else {
+        //         None
+        //     }
+        // }
+
+        // Consumes the first element of the sequence Collection
+        fn take_first(&mut self) -> Option<AnnotatedSequence> {
+            if self.ids.len()>0 {
+                let r = self.sequences.remove(0);
+                self.ids.remove(r.id());
+                Some(r)
             } else {
                 None
             }
+            
+        }
+    }
+
+    /// IntoIterator implementation for SequenceCollection
+    /// ```
+    /// use famlib::seqs::{
+    ///     AnnotatedSequence,
+    ///     SequenceCollection,
+    ///     SequenceAccesors
+    /// };
+    /// fn build_a() -> SequenceCollection {
+    ///     let a = AnnotatedSequence::from_string(
+    ///         String::from("S1"),
+    ///         String::from("A--A--C--C--"));
+    ///     let b = AnnotatedSequence::from_string(
+    ///         String::from("S2"),
+    ///         String::from("TAGTACGATGAC"));
+    ///     let c = AnnotatedSequence::from_string(
+    ///         String::from("S3"),
+    ///         String::from("TAGTACGATGAC"));
+    ///     let mut seqcol = SequenceCollection::new();
+    ///     seqcol.add(a);
+    ///     seqcol.add(b);
+    ///     seqcol.add(c);
+    ///     return seqcol;
+    /// }
+    /// let seqcol = build_a();
+    /// assert_eq!(seqcol.size(), 3);
+    /// let x = seqcol.into_iter().collect::<Vec<_>>();
+    /// assert_eq!(x.len(), 3);
+    /// ```
+    impl IntoIterator for SequenceCollection {
+        type Item = AnnotatedSequence;
+        // type IntoIter = SequenceCollectionIntoiter;
+        type IntoIter = <Vec<AnnotatedSequence> as IntoIterator>::IntoIter;
+        fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+            self.sequences.into_iter()
+            // SequenceCollectionIntoiter{data:self}
         }
     }
 
     pub struct Alignment {
         seqs: SequenceCollection,
+        // The numner of columns of the MSA
         length: Option<usize>
     }
 
@@ -393,18 +446,32 @@ pub mod seqs {
         }
         /// Make A gapstripped copy of the alignment
         /// ```
-        /// use famlib::seqs::{SequenceCollection, Alignment, SequenceAccesors, AnnotatedSequence};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
-        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
-        /// let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     Alignment,
+        ///     SequenceAccesors,
+        ///     AnnotatedSequence};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("A--A--C--C--"));
+        /// let b = AnnotatedSequence::from_string(
+        ///     String::from("S2"),
+        ///     String::from("TAGTACGATGAC"));
+        /// let c = AnnotatedSequence::from_string(
+        ///     String::from("S3"),
+        ///     String::from("TAGTACGATGAC"));
         /// let mut seqs = Alignment::new();
         /// seqs.add(a);
         /// seqs.add(b);
         /// seqs.add(c);
         /// let gs = seqs.gapstrip();
         /// assert_eq!(gs.length(), 4);
-        /// assert_eq!(gs.get(0).unwrap().seq().unwrap(), &vec!['A', 'A', 'C', 'C']);
-        /// assert_eq!(gs.get(1).unwrap().seq().unwrap(), &vec!['T', 'T', 'G', 'G']);
+        /// assert_eq!(
+        ///     gs.get(0).unwrap().seq().unwrap(),
+        ///     &vec!['A', 'A', 'C', 'C']);
+        /// assert_eq!(
+        ///     gs.get(1).unwrap().seq().unwrap(),
+        ///     &vec!['T', 'T', 'G', 'G']);
         /// ```
         pub fn gapstrip(&self) -> Self {
             let reference = self.get(0).unwrap().seq().unwrap();
@@ -414,7 +481,8 @@ pub mod seqs {
                 .map(|x| (
                     reference.iter()
                             .zip(x.seq().unwrap())
-                            .filter_map(|(a, b)| if *a != '-' {Some(b)} else {None})
+                            .filter_map(
+                                |(a, b)| if *a != '-' {Some(b)} else {None})
                             .collect::<String>(),
                     x.id.clone()));
             for (new_seq, new_id) in new_seq_iter{
@@ -507,8 +575,8 @@ pub mod seqs {
         fn contains(&self, id: &str) -> bool {
             self.seqs.ids.contains(id)
         }
-        fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
-            self.seqs.take(id)
+        fn take_first(&mut self) -> Option<AnnotatedSequence> {
+            self.seqs.take_first()
         }
     }
 
@@ -516,8 +584,6 @@ pub mod seqs {
         sequences: &'seqcol SequenceCollection,
         next: usize,
     }
-
-    
 
     impl<'a> Iterator for SequenceIterable<'a> {
         type Item = &'a AnnotatedSequence;
@@ -536,10 +602,16 @@ pub mod seqs {
         }
     }
     #[test]
-    fn teste_sequence_iterator() {
-        let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
-        let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
-        let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
+    fn test_sequence_iterator() {
+        let a = AnnotatedSequence::from_string(
+            String::from("S1"),
+            String::from("A--A--C--C--"));
+        let b = AnnotatedSequence::from_string(
+            String::from("S2"),
+            String::from("TAGTACGATGAC"));
+        let c = AnnotatedSequence::from_string(
+            String::from("S3"),
+            String::from("TAGTACGATGAC"));
         let mut seqs = Alignment::new();
         seqs.add(a).unwrap();
         seqs.add(b).unwrap();
@@ -571,8 +643,16 @@ pub mod seqs {
         }
     }
 
+    impl IntoIterator for Alignment {
+        type Item = AnnotatedSequence;
+        type IntoIter = <Vec<AnnotatedSequence> as IntoIterator>::IntoIter;
+        fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+            self.seqs.into_iter()
+        }
+    }
+
     #[test]
-    fn teste_column_iterator() {
+    fn test_column_iterator() {
         let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
         let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
         let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
