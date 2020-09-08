@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+[#6] - 2020-09-08 Added get_mut to sequenceCollection
 [#4] - 2020-09-08 Implement IntoIterator
 [#2] - 2020-09-07 Add Join and concat functions
 [#1] - 2020-09-07 Pop Reference
