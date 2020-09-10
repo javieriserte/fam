@@ -31,6 +31,7 @@ pub mod seqs {
     }
 
     pub trait SequenceAccesors {
+        fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence>;
         fn size(&self) -> usize;
         fn contains(&self, id: &str) -> bool;
         fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
@@ -442,6 +443,25 @@ pub mod seqs {
                 None
             }
         }
+
+        /// Get a mutable Annotated sequence from a SequenceCollection
+        /// ```
+        /// use famlib::seqs::{
+        ///     AnnotatedSequence,
+        ///     SequenceCollection,
+        ///     SequenceAccesors};
+        /// let mut sq = SequenceCollection::new();
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ACTG"));
+        /// sq.add(a);
+        /// let mut b = sq.get_mut(0).unwrap();
+        /// b.set_sequence_as_string(String::from("AT"));
+        /// assert_eq!(sq.get(0).unwrap().seq_as_string(), "AT");
+        /// ```
+        fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence> {
+            self.sequences.get_mut(index)
+        }
     }
 
     /// IntoIterator implementation for SequenceCollection
@@ -636,6 +656,9 @@ pub mod seqs {
         }
         fn remove_by_id(&mut self, id: &str) -> Option<AnnotatedSequence> {
             self.seqs.remove_by_id(id)
+        }
+        fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence> {
+            self.seqs.get_mut(index)
         }
     }
 
