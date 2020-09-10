@@ -2,8 +2,8 @@ pub mod fastaio;
 pub mod merge;
 
 pub mod seqs {
+    use std::collections::HashMap;
     use std::fmt::{Display, Error, Formatter};
-    use std::collections::HashSet;
     use std::iter::{IntoIterator, Iterator};
 
     #[derive(Debug)]
@@ -31,15 +31,19 @@ pub mod seqs {
     }
 
     pub trait SequenceAccesors {
-        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError> ;
-        fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
-        fn remove(&mut self, id: &String) -> Option<AnnotatedSequence>;
-        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError>;
         fn size(&self) -> usize;
-        fn move_up(&mut self, id: &String) -> Result<(), SeqError>;
-        fn iter(&self) -> SequenceIterable;
         fn contains(&self, id: &str) -> bool;
-        fn take_first(&mut self) -> Option<AnnotatedSequence>;
+        fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
+        fn get_by_id(&self, id: &str) -> Option<&AnnotatedSequence>;
+        fn add(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError>;
+        fn insert(&mut self, index: usize, seq: AnnotatedSequence)
+             -> Result<(), SeqError>;
+        fn remove(&mut self, index: usize) -> Option<AnnotatedSequence>;
+        fn remove_by_id(&mut self, id: &str) -> Option<AnnotatedSequence>;
+        // fn add_first(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError>;
+        // fn remove_first(&mut self) -> Option<AnnotatedSequence>;
+        fn move_up(&mut self, id: &str) -> Result<(), SeqError>;
+        fn iter(&self) -> SequenceIterable;
     }
 
     /// Struct to represent a single sequence of a MSA
@@ -53,9 +57,14 @@ pub mod seqs {
         /// Creates a new AnnotatedSequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let a = AnnotatedSequence::new(String::from("S1"), vec!['A', 'T', 'C', 'A', 'T', 'G', 'C', 'T', 'A', 'C', 'T', 'G']);
+        /// let a = AnnotatedSequence::new(
+        ///     String::from("S1"),
+        ///     vec!['A', 'T', 'C', 'A', 'T', 'G',
+        ///          'C', 'T', 'A', 'C', 'T', 'G']);
         /// assert_eq!(a.id(), "S1");
-        /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C', 'A', 'T', 'G', 'C', 'T', 'A', 'C', 'T', 'G']));
+        /// assert_eq!(a.seq(), Some(
+        ///     &vec!['A', 'T', 'C', 'A', 'T', 'G',
+        ///           'C', 'T', 'A', 'C', 'T', 'G']));
         /// ```
         pub fn new(id: String, sequence: Vec<char>) -> Self {
             AnnotatedSequence{
@@ -204,8 +213,7 @@ pub mod seqs {
     #[derive(Clone, PartialEq)]
     pub struct SequenceCollection {
         sequences: Vec<AnnotatedSequence>,
-        ids: HashSet<String> // TODO: replace with a hashmap to the
-                             // sequence indexes.
+        ids: HashMap<String, usize> // Maps id to index in sequences vector
     }
 
     impl SequenceCollection {
@@ -217,7 +225,7 @@ pub mod seqs {
         pub fn new() -> Self {
             SequenceCollection{
                 sequences: vec![],
-                ids: HashSet::new()
+                ids: HashMap::new()
             }
         }
 
@@ -240,35 +248,48 @@ pub mod seqs {
     }
 
     impl SequenceAccesors for SequenceCollection {
-        // fn contains(&self, id: &str) -> bool{
-        //     self.ids.contains(id)
-        // }
         /// ```
-        /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
-        /// let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence,
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(
+        ///     String::from("S2"), String::from("TAGTACGATGAC"));
+        /// let c = AnnotatedSequence::from_string(
+        ///     String::from("S3"), String::from("TAGTACGATGAC"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// seqs.add(b);
-        /// seqs.add_on_top(c);
+        /// seqs.insert(0, c);
         /// assert_eq!(seqs.get(0).unwrap().id(), "S3");
         /// ```
-        fn add_on_top(&mut self, seq: AnnotatedSequence) -> Result<(), SeqError> {
-            if self.ids.contains(&seq.id().to_string()) {
+        fn insert(
+                &mut self,
+                index: usize,
+                seq: AnnotatedSequence) -> Result<(), SeqError> {
+            if self.ids.contains_key(&seq.id().to_string()) {
                 Err(SeqError::DuplicatedId(String::from(seq.id())))
-                // Err(String::from("Repeated ID."))
             } else {
-                self.ids.insert(seq.id().to_string());
-                self.sequences.insert(0, seq);
+                for x in self.ids.values_mut() {
+                    if *x >= index {*x = *x+1;}
+                }
+                self.ids.insert(seq.id().to_string(), index);
+                self.sequences.insert(index, seq);
                 Ok(())
             }
         }
 
         /// ```
-        /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
-        /// let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence, 
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"), String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(
+        ///     String::from("S2"), String::from("TAGTACGATGAC"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// seqs.add(b);
@@ -276,18 +297,26 @@ pub mod seqs {
         /// assert_eq!(seqs.get(1).unwrap().id(), "S2");
         /// ```
         fn add(&mut self, seq: AnnotatedSequence) -> Result<(), SeqError> {
-            if self.ids.contains(&seq.id().to_string()) {
+            if self.ids.contains_key(&seq.id().to_string()) {
                 Err(SeqError::DuplicatedId(seq.id().to_string()))
             } else {
-                self.ids.insert(seq.id().to_string());
+                self.ids.insert(
+                    seq.id().to_string(),
+                    self.ids.len()
+                );
                 self.sequences.push(seq);
                 Ok(())
             }
         }
 
         /// ```
-        /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence,
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// assert_eq!(seqs.size(), 0);
         /// seqs.add(a);
@@ -296,10 +325,15 @@ pub mod seqs {
         fn size(&self) -> usize {
             self.sequences.len()
         }
-
+        
         /// ```
-        /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence,
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
         /// assert_eq!(seqs.get(0).unwrap().id(), String::from("S1"));
@@ -307,28 +341,58 @@ pub mod seqs {
         fn get(&self, index: usize) -> Option<&AnnotatedSequence> {
             self.sequences.get(index)
         }
-
+        
         /// ```
-        /// use famlib::seqs::{SequenceCollection, AnnotatedSequence, SequenceAccesors};
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCATGCTACTG"));
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence,
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATCATGCTACTG"));
         /// let mut seqs = SequenceCollection::new();
         /// seqs.add(a);
-        /// let b = seqs.remove(&String::from("S1")).unwrap();
-        /// assert_eq!(b.id(), "S1");
+        /// assert_eq!(seqs.get_by_id("S2"), None); 
+        /// assert_eq!(
+        ///     seqs.get_by_id("S1").unwrap().seq_as_string(),
+        ///     String::from("ATCATGCTACTG")
+        /// );
+        /// ```
+        fn get_by_id(&self, id: &str) -> Option<&AnnotatedSequence> {
+            match self.ids.get(id) {
+                None => None,
+                Some(x) => self.get(*x)
+            }
+        }
+
+        /// ```
+        /// use famlib::seqs::{
+        ///     SequenceCollection,
+        ///     AnnotatedSequence,
+        ///     SequenceAccesors};
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATCATGCTACTG"));
+        /// let b = AnnotatedSequence::from_string(
+        ///     String::from("S2"),
+        ///     String::from("ATCATGCTACTG"));
+        /// let mut seqs = SequenceCollection::new();
+        /// seqs.add(a);
+        /// seqs.add(b);
+        /// let c = seqs.remove_by_id(&String::from("S1")).unwrap();
+        /// assert_eq!(c.id(), "S1");
+        /// assert_eq!(seqs.size(), 1);
+        /// let d = seqs.remove_by_id(&String::from("S2")).unwrap();
+        /// assert_eq!(d.id(), "S2");
         /// assert_eq!(seqs.size(), 0);
         /// ```
-        fn remove(&mut self, id: &String) -> Option<AnnotatedSequence> {
-            if self.ids.contains(id) {
-                self.ids.remove(id);
-                let found:Vec<usize> = self.sequences.iter().enumerate().filter_map(|(i, annseq)| match annseq.id() == id {
-                    true => Some(i),
-                    false => None
-                }).collect();
-                if found.len() == 1 {
-                    Some(self.sequences.remove(found[0]))
-                } else {
-                    panic!("Weird stuff happened")
-                }
+        fn remove_by_id(&mut self, id: &str) -> Option<AnnotatedSequence> {
+            if self.ids.contains_key(id) {
+                let index = self.ids.remove(id).unwrap();
+                for x in self.ids.values_mut() {
+                    if *x>index {*x = *x-1;}
+                }                
+                Some(self.sequences.remove(index))
             } else {
                 None
             }
@@ -351,10 +415,10 @@ pub mod seqs {
         /// assert_eq!(seqs.get(1).unwrap().id(), "S1");
         /// assert_eq!(seqs.get(2).unwrap().id(), "S2");
         /// ```
-        fn move_up(&mut self, id: &String) -> Result<(), SeqError>{
-            match self.remove(id) {
+        fn move_up(&mut self, id: &str) -> Result<(), SeqError>{
+            match self.remove_by_id(id) {
                 None => Err(SeqError::NonExistenId(id.to_string())),
-                Some(x) => self.add_on_top(x)
+                Some(x) => self.insert(0, x)
             }
         }    
         fn iter(&self) -> SequenceIterable<'_> { 
@@ -364,32 +428,19 @@ pub mod seqs {
             }
         }
         fn contains(&self, id: &str) -> bool {
-            self.ids.contains(id)
+            self.ids.contains_key(id)
         }
 
-        // fn take(&mut self, id: &str) -> Option<AnnotatedSequence> {
-        //     if self.contains(id) {
-        //         for (i, s) in self.sequences.iter().enumerate() {
-        //             if s.id() == id {
-        //                 return Some(self.sequences.remove(i));
-        //             }
-        //         };
-        //         None
-        //     } else {
-        //         None
-        //     }
-        // }
-
         // Consumes the first element of the sequence Collection
-        fn take_first(&mut self) -> Option<AnnotatedSequence> {
-            if self.ids.len()>0 {
+        fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
+            if self.ids.len()>0 && index < self.size() {
                 let r = self.sequences.remove(0);
                 self.ids.remove(r.id());
+                for x in self.ids.values_mut() {if *x > index {*x=*x-1}}
                 Some(r)
             } else {
                 None
             }
-            
         }
     }
 
@@ -524,17 +575,17 @@ pub mod seqs {
 
         pub fn col_gap_frq(&self) -> Option<Vec<f64>> {
             if self.size()>0 {
-            Some(self.columns()
+                Some(self.columns()
                 .map(|x| {
                     x.iter()
-                     .fold(0f64, |a, b| a + if **b == '-' {1f64} else {0f64}) / self.size() as f64
+                    .fold(0f64, |a, b| a + if **b == '-' {1f64} else {0f64}) / self.size() as f64
                 }).collect::<Vec<f64>>())
             } else {
                 None
             }
         }
     }
-
+    
     impl SequenceAccesors for Alignment {
         fn add(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError> {
             match self.length {
@@ -557,13 +608,21 @@ pub mod seqs {
         fn get(&self, index : usize) -> Option<&AnnotatedSequence> {
             self.seqs.get(index)
         }
-        fn remove(&mut self, id: &String) -> Option<AnnotatedSequence> {
-            self.seqs.remove(id)
+        
+        fn get_by_id(&self, id: &str) -> Option<&AnnotatedSequence> {
+            self.seqs.get_by_id(id)
         }
-        fn add_on_top(&mut self, sequence: AnnotatedSequence) -> Result<(), SeqError> {
-            self.seqs.add_on_top(sequence)
+        
+        fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
+            self.seqs.remove(index)
+        }   
+        fn insert(
+            &mut self,
+            index: usize,
+                sequence: AnnotatedSequence) -> Result<(), SeqError> {
+                    self.seqs.insert(index, sequence)
         }
-        fn move_up(&mut self, id: &String) -> Result<(), SeqError> {
+        fn move_up(&mut self, id: &str) -> Result<(), SeqError> {
             self.seqs.move_up(id)
         }
         fn iter(&self) -> SequenceIterable<'_> { 
@@ -573,10 +632,10 @@ pub mod seqs {
             }
         }
         fn contains(&self, id: &str) -> bool {
-            self.seqs.ids.contains(id)
+            self.seqs.ids.contains_key(id)
         }
-        fn take_first(&mut self) -> Option<AnnotatedSequence> {
-            self.seqs.take_first()
+        fn remove_by_id(&mut self, id: &str) -> Option<AnnotatedSequence> {
+            self.seqs.remove_by_id(id)
         }
     }
 
@@ -653,9 +712,12 @@ pub mod seqs {
 
     #[test]
     fn test_column_iterator() {
-        let a = AnnotatedSequence::from_string(String::from("S1"), String::from("A--A--C--C--"));
-        let b = AnnotatedSequence::from_string(String::from("S2"), String::from("TAGTACGATGAC"));
-        let c = AnnotatedSequence::from_string(String::from("S3"), String::from("TAGTACGATGAC"));
+        let a = AnnotatedSequence::from_string(
+            String::from("S1"), String::from("A--A--C--C--"));
+        let b = AnnotatedSequence::from_string(
+            String::from("S2"), String::from("TAGTACGATGAC"));
+        let c = AnnotatedSequence::from_string(
+            String::from("S3"), String::from("TAGTACGATGAC"));
         let mut seqs = Alignment::new();
         seqs.add(a).unwrap();
         seqs.add(b).unwrap();
@@ -664,6 +726,5 @@ pub mod seqs {
         assert_eq!(clms[0], vec![&'A', &'T', &'T']);
         assert_eq!(clms[1], vec![&'-', &'A', &'A']);
         assert_eq!(clms[11], vec![&'-', &'C', &'C']);
-
     }
 }

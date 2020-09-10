@@ -70,15 +70,6 @@ impl DataSink {
             }
         }
     }
-    pub fn write_to_file<T: SequenceAccesors>(&self, seqs: T) -> io::Result<()>{
-        match self {
-            DataSink::StdOut => panic!("This should be not reachable"),
-            DataSink::FilePath(x) => {
-                let file = File::create(x).unwrap();
-                write_sequence_collection(seqs, file)
-            }
-        }
-    }
 }
 
 pub fn pop_command (
@@ -144,7 +135,7 @@ pub fn dimension_command(fs: DataSource, expanded:bool) -> io::Result<()> {
 
 pub fn collect_command(ds: DataSink) -> io::Result<()> {
     let msa = sequence_collection_from_stdin()?;
-    ds.write_to_file(msa)
+    ds.write_fasta(msa)
 }
 
 /// Join two or more sequence collections into one.
