@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+[#5] - 2020-09-10 Use HashMap in sequenceCollection
 [#6] - 2020-09-08 Added get_mut to sequenceCollection
 [#4] - 2020-09-08 Implement IntoIterator
 [#2] - 2020-09-07 Add Join and concat functions
