@@ -2,7 +2,8 @@ pub mod fastaio;
 pub mod merge;
 
 pub mod seqs {
-    use std::collections::HashMap;
+    use std::cmp::min;
+use std::collections::HashMap;
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -11,7 +12,9 @@ pub mod seqs {
         DuplicatedId(String),
         DifferentLength,
         NonExistenId(String),
-        MissingID(String)
+        MissingID(String),
+        EditError,
+        Empty
     }
     impl Display for SeqError{
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
@@ -25,7 +28,12 @@ pub mod seqs {
                     "Attempted to add a sequence with \
                     different length to a MSA."),
                 SeqError::MissingID(x) => write!(f,
-                    "A sequence with ID [{}] is required", x)
+                    "A sequence with ID [{}] is required", x),
+                SeqError::EditError => write!(f,
+                    "Attempted to edit a sequence beyond its length"),
+                SeqError::Empty => write!(f,
+                    "Attempted to access an empty sequence")
+    
             }
         }
     }
@@ -208,6 +216,48 @@ pub mod seqs {
         /// ```
         pub fn id(&self) -> &str {
             &self.id
+        }
+
+        pub fn edit_insert(&mut self, new: Vec<char>, at: usize) -> Result<(), SeqError>{
+            match self.sequence.as_mut(){
+                Some(x) => {
+                    if at < x.len()  {
+                        x.splice(at..at, new);
+                        Ok(())
+                    } else {
+                        Err(SeqError::EditError)
+                    }
+                },
+                None => Err(SeqError::Empty)
+            }
+        }
+
+        pub fn edit_replace(&mut self, new: Vec<char>, at: usize) -> Result<(), SeqError>{
+            match self.sequence.as_mut(){
+                Some(x) => {
+                    if at < x.len()  {
+                        x.splice(at..min(at+new.len(), x.len()), new);
+                        Ok(())
+                    } else {
+                        Err(SeqError::EditError)
+                    }
+                },
+                None => Err(SeqError::Empty)
+            }
+        }
+
+        pub fn edit_delete(&mut self, at: usize, count: usize) -> Result<(), SeqError>{
+            match self.sequence.as_mut(){
+                Some(x) => {
+                    if at < x.len()  {
+                        x.splice(at..min(at+count, x.len()), vec![]);
+                        Ok(())
+                    } else {
+                        Err(SeqError::EditError)
+                    }
+                },
+                None => Err(SeqError::Empty)
+            }
         }
     }
 
