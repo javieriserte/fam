@@ -1,9 +1,9 @@
 pub mod fastaio;
 pub mod merge;
+pub mod edit;
 
 pub mod seqs {
-    use std::cmp::min;
-use std::collections::HashMap;
+    use std::collections::HashMap;
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -168,6 +168,13 @@ use std::collections::HashMap;
             }
         }
 
+        pub fn seq_mut(&mut self) -> Option<&mut Vec<char>> {
+            match &mut self.sequence {
+                None => None,
+                Some(x)=> Some(x)
+            }
+        }
+
         pub fn seq_as_string(&self) -> String {
             match &self.sequence {
                 None => String::from(""), 
@@ -216,48 +223,6 @@ use std::collections::HashMap;
         /// ```
         pub fn id(&self) -> &str {
             &self.id
-        }
-
-        pub fn edit_insert(&mut self, new: Vec<char>, at: usize) -> Result<(), SeqError>{
-            match self.sequence.as_mut(){
-                Some(x) => {
-                    if at < x.len()  {
-                        x.splice(at..at, new);
-                        Ok(())
-                    } else {
-                        Err(SeqError::EditError)
-                    }
-                },
-                None => Err(SeqError::Empty)
-            }
-        }
-
-        pub fn edit_replace(&mut self, new: Vec<char>, at: usize) -> Result<(), SeqError>{
-            match self.sequence.as_mut(){
-                Some(x) => {
-                    if at < x.len()  {
-                        x.splice(at..min(at+new.len(), x.len()), new);
-                        Ok(())
-                    } else {
-                        Err(SeqError::EditError)
-                    }
-                },
-                None => Err(SeqError::Empty)
-            }
-        }
-
-        pub fn edit_delete(&mut self, at: usize, count: usize) -> Result<(), SeqError>{
-            match self.sequence.as_mut(){
-                Some(x) => {
-                    if at < x.len()  {
-                        x.splice(at..min(at+count, x.len()), vec![]);
-                        Ok(())
-                    } else {
-                        Err(SeqError::EditError)
-                    }
-                },
-                None => Err(SeqError::Empty)
-            }
         }
     }
 
