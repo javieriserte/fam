@@ -151,7 +151,7 @@ mod test {
             Err(SeqError::DuplicatedId(x)) => assert_eq!(&x, "S1"),
             _ => panic!(
                 "This should fail with \
-                         SeqError::DuplicatedID('S1')"
+                SeqError::DuplicatedID('S1')"
             ),
         }
     }

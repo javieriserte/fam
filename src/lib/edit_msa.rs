@@ -2,18 +2,19 @@ use crate::edit::EditSequence;
 use crate::seqs::Alignment;
 use crate::seqs::SeqError;
 use crate::seqs::SequenceAccesors;
+use crate::seqs::AnnotatedSequence;
 
 pub trait EditMSA {
     fn insert_columns(
         &mut self,
         at: usize,
-        n: usize,
+        ncols: usize,
         ch: char,
     ) -> Result<(), SeqError>;
     fn insert_rows(
         &mut self,
         at: usize,
-        n: usize,
+        rownames: Vec<&str>,
         ch: char,
     ) -> Result<(), SeqError>;
     fn insert_content(
@@ -37,23 +38,35 @@ impl EditMSA for Alignment {
     fn insert_columns(
         &mut self,
         at: usize,
-        ncol: usize,
+        ncols: usize,
         ch: char,
     ) -> Result<(), SeqError> {
         for i in 0..self.size() {
             let s = self.get_mut(i).unwrap();
-            s.edit_insert(vec![ch; ncol], at)?;
+            s.edit_insert(vec![ch; ncols], at)?;
         }
-        self.length = self.length.map(|x| x + ncol);
+        self.length = self.length.map(|x| x + ncols);
         Ok(())
     }
     fn insert_rows(
         &mut self,
-        _: usize,
-        _: usize,
-        _: char,
+        at: usize,
+        rownames: Vec<&str>,
+        ch: char,
     ) -> std::result::Result<(), SeqError> {
-        todo!()
+        
+        if at <= self.size()  {
+            for name in rownames {
+                let seq =  AnnotatedSequence::new(
+                    format!("{}", name),
+                    vec![ch; self.length()]
+                );
+                self.insert(at, seq)?
+            }
+            Ok(())
+        } else {
+            Err(SeqError::EditError)
+        }
     }
     fn insert_content(
         &mut self,
@@ -187,5 +200,35 @@ mod test {
         // Insert passing end
         let mut msa = sample_msa();
         msa.insert_columns(5, 3, '-').expect_err("Should fails");
+    }
+
+    #[test]
+    fn insert_zero_rows_at_any_position() {
+        // Insert at beggining
+        let mut msa = sample_msa();
+        assert!(msa.insert_rows(0, 0, '-').is_ok());
+        assert_eq!(msa.length(), 4);
+        compare_sequence(&msa, "s1", "ACTG");
+        check_internal_length_consistency(&msa);
+        // Insert at middle
+        assert!(msa.insert_rows(2, 0, '-').is_ok());
+        assert_eq!(msa.length(), 4);
+        compare_sequence(&msa, "s1", "ACTG");
+        check_internal_length_consistency(&msa);
+        // Insert at end
+        assert!(msa.insert_rows(4, 0, '-').is_ok());
+        assert_eq!(msa.length(), 4);
+        compare_sequence(&msa, "s1", "ACTG");
+        check_internal_length_consistency(&msa);
+        // Insert passing end
+        msa.insert_rows(5, 0, '-').expect_err("Should fail");
+    }
+    #[test]
+    fn insert_one_rows_at_any_position() {
+        unimplemented!();
+    }
+    #[test]
+    fn insert_many_rows_at_any_position() {
+        unimplemented!();
     }
 }
