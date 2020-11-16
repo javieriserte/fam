@@ -532,7 +532,7 @@ pub mod seqs {
     }
 
     pub struct Alignment {
-        seqs: SequenceCollection,
+        pub (crate) seqs: SequenceCollection,
         // The numner of columns of the MSA
         pub (crate) length: Option<usize>,
     }
