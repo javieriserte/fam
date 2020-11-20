@@ -160,9 +160,16 @@ impl EditMSA for Alignment {
     }
     fn remove_rows(
         &mut self,
-        _positions: Vec<usize>
+        positions: Vec<usize>
     ) -> std::result::Result<(), SeqError> {
-        todo!()
+        let mut sorted = positions;
+        sorted.sort_unstable();
+        sorted.reverse();
+        Ok(
+            for row_index in sorted {
+                self.seqs.remove(row_index).ok_or_else(|| SeqError::EditError)?;
+            }
+        )
     }
     fn replace_content(
         &mut self,
@@ -183,6 +190,8 @@ mod test {
     use crate::seqs::SequenceAccesors;
     // use crate::seqs::SequenceCollection;
 
+
+
     fn sample_msa() -> Alignment {
         let mut msa = Alignment::new();
         let s1 = AnnotatedSequence::from_string(
@@ -200,6 +209,30 @@ mod test {
         msa.add(s1).unwrap();
         msa.add(s2).unwrap();
         msa.add(s3).unwrap();
+        msa
+    }
+    fn sample_large() -> Alignment {
+        let mut msa = Alignment::new();
+        let s1 = AnnotatedSequence::from_string(
+            String::from("s1"), String::from("ACTG"),
+        );
+        let s2 = AnnotatedSequence::from_string(
+            String::from("s2"), String::from("CCTG"),
+        );
+        let s3 = AnnotatedSequence::from_string(
+            String::from("s3"), String::from("ACAG"),
+        );
+        let s4 = AnnotatedSequence::from_string(
+            String::from("s4"), String::from("ACAG"),
+        );
+        let s5 = AnnotatedSequence::from_string(
+            String::from("s5"), String::from("ACAG"),
+        );
+        msa.add(s1).unwrap();
+        msa.add(s2).unwrap();
+        msa.add(s3).unwrap();
+        msa.add(s4).unwrap();
+        msa.add(s5).unwrap();
         msa
     }
     fn compare_sequence(msa: &Alignment, id: &str, seq: &str) {
@@ -539,5 +572,82 @@ mod test {
         // two columns, passing end
         let mut msa = sample_msa();
         msa.remove_columns(vec![4, 0, 1]).expect_err("Should Fail");
+    }
+    #[test]
+    fn remove_zero_rows() {
+        let mut msa = sample_msa();
+        let rows_to_remove = vec![];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 3);
+    }
+    #[test]
+    fn remove_one_row() {
+        // At beggining
+        let mut msa = sample_large();
+        let rows_to_remove = vec![0];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 4);
+
+        // At middle
+        let mut msa = sample_large();
+        let rows_to_remove = vec![2];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 4);
+        
+        // At end
+        let mut msa = sample_large();
+        let rows_to_remove = vec![4];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 4);
+        
+        // Passing end
+        let mut msa = sample_large();
+        let rows_to_remove = vec![5];
+        msa.remove_rows(rows_to_remove).expect_err("Should fail");
+        assert_eq!(msa.size(), 5);
+    }
+    #[test]
+    fn remove_many_rows() {
+        let mut msa = sample_large();
+        let rows_to_remove = vec![0, 1];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 3);
+        assert_eq!(msa.get(0).unwrap().id(), "s3" );
+        assert_eq!(msa.get(1).unwrap().id(), "s4" );
+        assert_eq!(msa.get(2).unwrap().id(), "s5" );
+
+        let mut msa = sample_large();
+        let rows_to_remove = vec![0, 2];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 3);
+        assert_eq!(msa.get(0).unwrap().id(), "s2" );
+        assert_eq!(msa.get(1).unwrap().id(), "s4" );
+        assert_eq!(msa.get(2).unwrap().id(), "s5" );
+        
+        let mut msa = sample_large();
+        let rows_to_remove = vec![0, 4];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 3);
+        assert_eq!(msa.get(0).unwrap().id(), "s2" );
+        assert_eq!(msa.get(1).unwrap().id(), "s3" );
+        assert_eq!(msa.get(2).unwrap().id(), "s4" );
+
+        let mut msa = sample_large();
+        let rows_to_remove = vec![3,2,1];
+        assert!(msa.remove_rows(rows_to_remove).is_ok());
+        assert_eq!(msa.size(), 2);
+        assert_eq!(msa.get(0).unwrap().id(), "s1" );
+        assert_eq!(msa.get(1).unwrap().id(), "s5" );
+
+    }
+    #[test]
+    fn remove_rows_many_times() {
+        let mut msa = sample_large();
+        let rows_to_remove_first = vec![0,3];
+        let rows_to_remove_second = vec![0,2];
+        assert!(msa.remove_rows(rows_to_remove_first).is_ok());
+        assert!(msa.remove_rows(rows_to_remove_second).is_ok());
+        assert_eq!(msa.size(), 1);
+        assert_eq!(msa.get(0).unwrap().id(), "s3");
     }
 }

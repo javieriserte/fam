@@ -457,10 +457,9 @@ pub mod seqs {
             self.ids.contains_key(id)
         }
 
-        // Consumes the first element of the sequence Collection
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
             if self.ids.len() > 0 && index < self.size() {
-                let r = self.sequences.remove(0);
+                let r = self.sequences.remove(index);
                 self.ids.remove(r.id());
                 for x in self.ids.values_mut() {
                     if *x > index {
