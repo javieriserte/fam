@@ -49,6 +49,7 @@ pub mod seqs {
 
     pub trait SequenceAccesors {
         fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence>;
+        // Retrieve de number of sequences (rows) in the collection.
         fn size(&self) -> usize;
         fn contains(&self, id: &str) -> bool;
         fn get(&self, index: usize) -> Option<&AnnotatedSequence>;
@@ -61,10 +62,9 @@ pub mod seqs {
         ) -> Result<(), SeqError>;
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence>;
         fn remove_by_id(&mut self, id: &str) -> Option<AnnotatedSequence>;
-        // fn add_first(&mut self, seq: AnnotatedSequence) -> Result<(),SeqError>;
-        // fn remove_first(&mut self) -> Option<AnnotatedSequence>;
         fn move_up(&mut self, id: &str) -> Result<(), SeqError>;
         fn iter(&self) -> SequenceIterable;
+        fn reorder(&mut self, order: Vec<usize>) -> Result<(), SeqError>;
     }
 
     /// Struct to represent a single sequence of a MSA
@@ -433,9 +433,9 @@ pub mod seqs {
         /// seqs.add(a);
         /// seqs.add(b);
         /// seqs.add(c);
-        /// assert_eq!(seqs.get(0).unwrap().id(), "S1");
-        /// assert_eq!(seqs.get(1).unwrap().id(), "S2");
-        /// assert_eq!(seqs.get(2).unwrap().id(), "S3");
+        /// assert_eq!(seqs.get(0).unwrap().annotated(), "S1");
+        /// assert_eq!(seqs.get(1).unwrap().annotated(), "S2");
+        /// assert_eq!(seqs.get(2).unwrap().annotated(), "S3");
         /// seqs.move_up(&String::from("S3"));
         /// assert_eq!(seqs.get(0).unwrap().id(), "S3");
         /// assert_eq!(seqs.get(1).unwrap().id(), "S1");
@@ -489,6 +489,50 @@ pub mod seqs {
         /// ```
         fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence> {
             self.sequences.get_mut(index)
+        }
+
+        /// Changes the order of the rows in the sequence collection
+        /// order should have repeated elements and the largest
+        /// element should be at most as large as the number of sequences
+        /// minus 1.
+        fn reorder(
+                &mut self,
+                order: std::vec::Vec<usize>)
+                -> std::result::Result<(), SeqError> {
+            let nrows = self.size();
+            if !order.iter().all(|x| *x<nrows) {
+                return Err(SeqError::EditError)
+            };
+            let mut order_counter = HashMap::<usize, usize>::new();
+            for i in order.iter(){
+                order_counter.insert(
+                    *i,
+                    match order_counter.get(i){
+                        None => 1,
+                        Some(x) => x+1
+                    }
+                );
+            };
+            if !order_counter.values().all(|x|*x<=1) {
+                return Err(SeqError::EditError)
+            }
+            let mut own_sequences: Vec<_> = self
+                .sequences
+                .to_owned()
+                .into_iter()
+                .map(|x| Some(x))
+                .collect();
+            self.sequences = order
+                .iter()
+                .map(|x| own_sequences[*x].take().unwrap())
+                .collect::<Vec<_>>();
+            self.ids = self
+                .sequences
+                .iter()
+                .enumerate()
+                .map(|(i, x)| (String::from(x.id()), i))
+                .collect::<HashMap<_,_>>();
+            Ok(())
         }
     }
 
@@ -668,6 +712,7 @@ pub mod seqs {
                 }
             }
         }
+        // Retrieves the number of rows in the alignment.
         fn size(&self) -> usize {
             self.seqs.sequences.len()
         }
@@ -706,6 +751,11 @@ pub mod seqs {
         }
         fn get_mut(&mut self, index: usize) -> Option<&mut AnnotatedSequence> {
             self.seqs.get_mut(index)
+        }
+        fn reorder(
+            &mut self,
+            order: std::vec::Vec<usize>) -> std::result::Result<(), SeqError> {
+            self.seqs.reorder(order)
         }
     }
 
@@ -805,5 +855,113 @@ pub mod seqs {
         assert_eq!(clms[0], vec![&'A', &'T', &'T']);
         assert_eq!(clms[1], vec![&'-', &'A', &'A']);
         assert_eq!(clms[11], vec![&'-', &'C', &'C']);
+    }
+}
+
+#[cfg(test)]
+mod test{
+    use crate::seqs::SequenceCollection;
+    use crate::seqs::AnnotatedSequence;
+    use crate::seqs::SequenceAccesors;
+    use crate::seqs::SeqError;
+    fn sample_sc() -> Result<SequenceCollection, SeqError> {
+        let a = AnnotatedSequence::from_string(
+            String::from("S1"),
+            String::from("A"),
+        );
+        let b = AnnotatedSequence::from_string(
+            String::from("S2"),
+            String::from("AA"),
+        );
+        let c = AnnotatedSequence::from_string(
+            String::from("S3"),
+            String::from("AAA"),
+        );
+        let d = AnnotatedSequence::from_string(
+            String::from("S4"),
+            String::from("AAAA"),
+        );
+        let mut sq = SequenceCollection::new();
+        sq.add(a)?;
+        sq.add(b)?;
+        sq.add(c)?;
+        sq.add(d)?;
+        Ok(sq)
+    }
+    #[test]
+    fn reorder_equal_order() {
+        let mut msa = sample_sc().unwrap();
+        assert!(msa.reorder(vec![0,1,2,3]).is_ok());
+        assert_eq!(msa.get(0).unwrap().id(), "S1");
+        assert_eq!(msa.get(1).unwrap().id(), "S2");
+        assert_eq!(msa.get(2).unwrap().id(), "S3");
+        assert_eq!(msa.get(3).unwrap().id(), "S4");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "A");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "AAAA");
+    }
+    #[test]
+    fn reorder_inverse_order() {
+        let mut msa = sample_sc().unwrap();
+        assert!(msa.reorder(vec![3,2,1,0]).is_ok());
+        assert_eq!(msa.get(0).unwrap().id(), "S4");
+        assert_eq!(msa.get(1).unwrap().id(), "S3");
+        assert_eq!(msa.get(2).unwrap().id(), "S2");
+        assert_eq!(msa.get(3).unwrap().id(), "S1");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "AAAA");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "AA");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "A");
+    }
+    #[test]
+    fn reorder_random_order() {
+        let mut msa = sample_sc().unwrap();
+        assert!(msa.reorder(vec![2,3,0,1]).is_ok());
+        assert_eq!(msa.get(0).unwrap().id(), "S3");
+        assert_eq!(msa.get(1).unwrap().id(), "S4");
+        assert_eq!(msa.get(2).unwrap().id(), "S1");
+        assert_eq!(msa.get(3).unwrap().id(), "S2");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AAAA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "A");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "AA");
+    }
+    #[test]
+    fn reorder_with_big_indexes() {
+        let mut msa = sample_sc().unwrap();
+        msa.reorder(vec![2,5,0,1]).expect_err("Should fail");
+        assert_eq!(msa.get(0).unwrap().id(), "S1");
+        assert_eq!(msa.get(1).unwrap().id(), "S2");
+        assert_eq!(msa.get(2).unwrap().id(), "S3");
+        assert_eq!(msa.get(3).unwrap().id(), "S4");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "A");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "AAAA");
+    }
+    #[test]
+    fn reorder_with_repeated_indexes() {
+        let mut msa = sample_sc().unwrap();
+        msa.reorder(vec![2,0,0,1]).expect_err("Should fail");
+        assert_eq!(msa.get(0).unwrap().id(), "S1");
+        assert_eq!(msa.get(1).unwrap().id(), "S2");
+        assert_eq!(msa.get(2).unwrap().id(), "S3");
+        assert_eq!(msa.get(3).unwrap().id(), "S4");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "A");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "AAAA");
+    }
+    #[test]
+    fn reorder_with_few_indexes() {
+        let mut msa = sample_sc().unwrap();
+        assert!(msa.reorder(vec![2,0,1]).is_ok());
+        assert_eq!(msa.get(0).unwrap().id(), "S3");
+        assert_eq!(msa.get(1).unwrap().id(), "S1");
+        assert_eq!(msa.get(2).unwrap().id(), "S2");
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "AAA");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "A");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "AA");
     }
 }

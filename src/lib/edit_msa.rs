@@ -1,3 +1,4 @@
+use std::cmp::max;
 use crate::edit::EditSequence;
 use crate::seqs::Alignment;
 use crate::seqs::SeqError;
@@ -34,13 +35,9 @@ pub trait EditMSA {
 
     fn replace_content(
         &mut self,
-        at: usize,
+        at_x: usize,
+        at_y: usize,
         content: Vec<Vec<char>>,
-    ) -> Result<(), SeqError>;
-
-    fn reorder_rows(
-        &mut self,
-        order: Vec<usize>
     ) -> Result<(), SeqError>;
 }
 
@@ -90,7 +87,6 @@ impl EditMSA for Alignment {
         rownames: Vec<&str>,
         ch: char,
     ) -> std::result::Result<(), SeqError> {
-        
         if at <= self.size()  {
             for name in rownames {
                 let seq =  AnnotatedSequence::new(
@@ -109,7 +105,7 @@ impl EditMSA for Alignment {
         at: usize,
         content: Vec<Vec<char>>
     ) -> Result<(), SeqError> {
-        if content.iter().all(|x| x.len() == self.size()) && 
+        if content.iter().all(|x| x.len() == self.size()) &&
             at <= self.length() {
             let tcontent = transpose_vector(&content);
             for (x, y) in (0..self.size()).zip(tcontent) {
@@ -171,15 +167,28 @@ impl EditMSA for Alignment {
             }
         )
     }
+    // Assumes that the content rows has all the same length.
     fn replace_content(
         &mut self,
-        _: usize,
-        _: std::vec::Vec<std::vec::Vec<char>>,
+        at_x: usize,
+        at_y: usize,
+        content: std::vec::Vec<std::vec::Vec<char>>,
     ) -> std::result::Result<(), SeqError> {
-        todo!()
-    }
-    fn reorder_rows(&mut self, _: Vec<usize>) -> Result<(), SeqError> {
-        todo!()
+        let content_cols = content.iter().fold(0usize, |x, y| max(y.len(), x));
+        if self.size() >= at_y + content.len() &&
+            self.length() >= at_x + content_cols {
+            for (i, repy) in content.iter().enumerate() {
+                let crow = self.seqs
+                    .get_mut(i+at_y)
+                    .ok_or_else(|| SeqError::EditError)?;
+                for (j, c) in repy.into_iter().enumerate() {
+                    crow.seq_mut().unwrap()[at_x+j] = *c;
+                }
+            };
+            Ok(())
+        } else {
+            Err(SeqError::EditError)
+        }
     }
 }
 
@@ -189,8 +198,6 @@ mod test {
     use crate::seqs::AnnotatedSequence;
     use crate::seqs::SequenceAccesors;
     // use crate::seqs::SequenceCollection;
-
-
 
     fn sample_msa() -> Alignment {
         let mut msa = Alignment::new();
@@ -368,8 +375,8 @@ mod test {
         check_internal_length_consistency(&msa);
         // Insert passing end
         msa.insert_empty_rows(4, vec!["ns1"], '-').expect_err("Should fail");
-        
     }
+
     #[test]
     fn insert_empty_many_rows_at_any_position() {
         // Insert at beggining
@@ -503,7 +510,7 @@ mod test {
         let mut msa = sample_msa();
         msa.insert_columns(5, vec![
             c1.clone(), c2.clone(), c3.clone()]).expect_err("Should fail");
-    }    
+    }
 
     #[test]
     fn transpose_vector_test() {
@@ -593,13 +600,13 @@ mod test {
         let rows_to_remove = vec![2];
         assert!(msa.remove_rows(rows_to_remove).is_ok());
         assert_eq!(msa.size(), 4);
-        
+
         // At end
         let mut msa = sample_large();
         let rows_to_remove = vec![4];
         assert!(msa.remove_rows(rows_to_remove).is_ok());
         assert_eq!(msa.size(), 4);
-        
+
         // Passing end
         let mut msa = sample_large();
         let rows_to_remove = vec![5];
@@ -623,7 +630,7 @@ mod test {
         assert_eq!(msa.get(0).unwrap().id(), "s2" );
         assert_eq!(msa.get(1).unwrap().id(), "s4" );
         assert_eq!(msa.get(2).unwrap().id(), "s5" );
-        
+
         let mut msa = sample_large();
         let rows_to_remove = vec![0, 4];
         assert!(msa.remove_rows(rows_to_remove).is_ok());
@@ -649,5 +656,64 @@ mod test {
         assert!(msa.remove_rows(rows_to_remove_second).is_ok());
         assert_eq!(msa.size(), 1);
         assert_eq!(msa.get(0).unwrap().id(), "s3");
+    }
+
+    #[test]
+    fn replace_with_empty_content() {
+        let mut msa = sample_msa();
+        let replacement = vec![];
+        assert!(msa.replace_content(1, 1, replacement).is_ok());
+        compare_sequence(&msa, "s1", "ACTG");
+        compare_sequence(&msa, "s2", "CCTG");
+        compare_sequence(&msa, "s3", "ACAG");
+
+        let replacement = vec![vec![]];
+        assert!(msa.replace_content(1, 1, replacement).is_ok());
+        compare_sequence(&msa, "s1", "ACTG");
+        compare_sequence(&msa, "s2", "CCTG");
+        compare_sequence(&msa, "s3", "ACAG");
+    }
+
+    #[test]
+    fn replace_with_content() {
+        let mut msa = sample_msa();
+        let replacement = vec![
+            vec!['X', 'X', 'X'],
+            vec!['Y', 'Y', 'Y']
+        ];
+        assert!(msa.replace_content(1, 1, replacement).is_ok());
+        compare_sequence(&msa, "s1", "ACTG");
+        compare_sequence(&msa, "s2", "CXXX");
+        compare_sequence(&msa, "s3", "AYYY");
+    }
+    #[test]
+    fn replace_with_big_content() {
+        let mut msa = sample_msa();
+        let replacement = vec![
+            vec!['X', 'X', 'X', 'Y', 'Y', 'Y'],
+            vec!['Y', 'Y', 'Y', 'Y', 'Y', 'Y']
+        ];
+        msa.replace_content(1, 1, replacement).expect_err("Should fail");
+        let mut msa = sample_msa();
+        let replacement = vec![
+            vec!['X', 'X', 'X'],
+            vec!['Y', 'Y', 'Y'],
+            vec!['X', 'X', 'X'],
+            vec!['Y', 'Y', 'Y']
+        ];
+        msa.replace_content(1, 1, replacement).expect_err("Should fail");
+    }
+    #[test]
+    fn replace_whole_content() {
+        let mut msa = sample_msa();
+        let replacement = vec![
+            vec!['X', 'X', 'X', 'X'],
+            vec!['Y', 'Y', 'Y', 'Y'],
+            vec!['Z', 'Z', 'Z', 'Z'],
+        ];
+        assert!(msa.replace_content(0, 0, replacement).is_ok());
+        compare_sequence(&msa, "s1", "XXXX");
+        compare_sequence(&msa, "s2", "YYYY");
+        compare_sequence(&msa, "s3", "ZZZZ");
     }
 }
