@@ -433,9 +433,9 @@ pub mod seqs {
         /// seqs.add(a);
         /// seqs.add(b);
         /// seqs.add(c);
-        /// assert_eq!(seqs.get(0).unwrap().annotated(), "S1");
-        /// assert_eq!(seqs.get(1).unwrap().annotated(), "S2");
-        /// assert_eq!(seqs.get(2).unwrap().annotated(), "S3");
+        /// assert_eq!(seqs.get(0).unwrap().id(), "S1");
+        /// assert_eq!(seqs.get(1).unwrap().id(), "S2");
+        /// assert_eq!(seqs.get(2).unwrap().id(), "S3");
         /// seqs.move_up(&String::from("S3"));
         /// assert_eq!(seqs.get(0).unwrap().id(), "S3");
         /// assert_eq!(seqs.get(1).unwrap().id(), "S1");
