@@ -231,7 +231,22 @@ pub fn main() -> io::Result<()> {
                         .long("out")
                         .takes_value(true)
                         .help("Output file")))
-            .get_matches();
+        .subcommand(SubCommand::with_name("remove")
+                    .about("Delete some rows or columns from the sequence collection")
+                    .arg(Arg::with_name("rows")
+                        .short("r")
+                        .long("row")
+                        .takes_value(true)
+                        .min_values(1)
+                        .help("The order index of the row to be removed (first row has index 1)"))
+                    .arg(Arg::with_name("rownames")
+                        .short("n")
+                        .long("rowname")
+                        .takes_value(true)
+                        .min_values(1)
+                        .help("The id of the rows to be deleted")
+                        .conflicts_with("rows")))
+        .get_matches();
 
     if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
         let input = match gsmatches.value_of("input") {
