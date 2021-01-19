@@ -1,9 +1,9 @@
 extern crate clap;
 use clap::{App, Arg, SubCommand};
-use famlib::fastaio::{
+use famlib::{edit_msa::EditMSA, fastaio::{
     sequence_collection_from_file, sequence_collection_from_stdin,
     write_sequence_collection,
-};
+}};
 use famlib::merge::{concat, join};
 use famlib::seqs::{SequenceAccesors, SequenceCollection};
 use std::fs::File;
@@ -160,6 +160,43 @@ pub fn concat_command(dss: Vec<DataSource>, sink: DataSink) -> io::Result<()> {
     }
     Ok(())
 }
+
+/// Remove Rows and columns from a MSA
+pub fn remove_command(
+        fs: DataSource,
+        fo: DataSink,
+        rows: Vec<usize>,
+        columns: Vec<usize>)
+        -> io::Result<()> {
+    let mut input = fs.get_sequence_collection().unwrap();
+    for i in rows {
+        input.remove(i);
+    }
+    if !columns.is_empty() {
+        let mut msa = match input.to_msa() {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    ErrorKind::Other,
+                    "Input needs to be an alignment. \
+                        All sequences should be the same length.\n",
+                ));
+            }
+        };
+        match msa.remove_columns(columns) {
+            Ok(_) => {},
+            Err(x) => {
+                return  Err(std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("{}", x)
+                ))
+            }
+        }
+        input = msa.seq_col_owned();
+    }
+    fo.write_fasta(input)
+}
+
 
 pub fn main() -> io::Result<()> {
     let matches = App::new("Fasta Alignment Manipulator")

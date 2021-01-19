@@ -457,6 +457,8 @@ pub mod seqs {
             self.ids.contains_key(id)
         }
 
+        /// Remove row in Sequence collection.
+        /// args: index: 0-based index of the element to be removed.
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
             if self.ids.len() > 0 && index < self.size() {
                 let r = self.sequences.remove(index);
@@ -693,6 +695,12 @@ pub mod seqs {
             } else {
                 None
             }
+        }
+        pub fn seq_col(&self) -> &SequenceCollection {
+            &self.seqs
+        }
+        pub fn seq_col_owned(self) -> SequenceCollection {
+            self.seqs
         }
     }
 
