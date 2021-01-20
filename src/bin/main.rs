@@ -1,5 +1,5 @@
 extern crate clap;
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, SubCommand, Values};
 use famlib::{edit_msa::EditMSA, fastaio::{
     sequence_collection_from_file, sequence_collection_from_stdin,
     write_sequence_collection,
@@ -13,6 +13,7 @@ use std::io::BufWriter;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::Path;
+
 
 #[derive(Debug)]
 pub struct DataSource {
@@ -270,19 +271,28 @@ pub fn main() -> io::Result<()> {
                         .help("Output file")))
         .subcommand(SubCommand::with_name("remove")
                     .about("Delete some rows or columns from the sequence collection")
+                    .arg(Arg::with_name("input")
+                        .short("i")
+                        .long("in")
+                        .takes_value(true)
+                        .help("The input file"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("The output file"))
                     .arg(Arg::with_name("rows")
                         .short("r")
-                        .long("row")
+                        .long("rows")
                         .takes_value(true)
                         .min_values(1)
                         .help("The order index of the row to be removed (first row has index 1)"))
-                    .arg(Arg::with_name("rownames")
-                        .short("n")
-                        .long("rowname")
+                    .arg(Arg::with_name("cols")
+                        .short("c")
+                        .long("cols")
                         .takes_value(true)
                         .min_values(1)
-                        .help("The id of the rows to be deleted")
-                        .conflicts_with("rows")))
+                        .help("The id of the rows to be deleted")))
         .get_matches();
 
     if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
@@ -324,12 +334,34 @@ pub fn main() -> io::Result<()> {
     if let Some(m) = matches.subcommand_matches("concat") {
         let inputs = m.values_of("input").unwrap();
         let files: Vec<DataSource> =
-            inputs.map(|x| DataSource::from(x)).collect();
+        inputs.map(|x| DataSource::from(x)).collect();
         let sink = match m.value_of("output") {
             None => DataSink::StdOut,
             Some(x) => DataSink::FilePath(x.to_string()),
         };
         return concat_command(files, sink);
+    }
+
+    if let Some(m) = matches.subcommand_matches("remove") {
+        let input = match m.value_of("input") {
+            None => DataSource::stdin(),
+            Some(x) => DataSource::from(&x),
+        };
+        let sink = match m.value_of("output") {
+            None => DataSink::StdOut,
+            Some(x) => DataSink::FilePath(x.to_string()),
+        };
+        let val_to_vec = |x:Values| x.filter_map(|y|
+            y.parse::<usize>().ok())
+            .into_iter()
+            .collect::<Vec<_>>();
+        let rows = m
+            .values_of("rows")
+            .map_or_else(|| vec![], |x| val_to_vec(x));
+        let cols = m
+            .values_of("cols")
+            .map_or_else(|| vec![], |x| val_to_vec(x));
+        remove_command(input, sink, rows, cols)?
     }
     Ok(())
 }
