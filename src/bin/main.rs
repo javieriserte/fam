@@ -1,203 +1,12 @@
 extern crate clap;
-use clap::{App, Arg, SubCommand, Values};
-use famlib::{edit_msa::EditMSA, fastaio::{
-    sequence_collection_from_file, sequence_collection_from_stdin,
-    write_sequence_collection,
-}};
-use famlib::merge::{concat, join};
-use famlib::seqs::{SequenceAccesors, SequenceCollection};
-use std::fs::File;
+mod cmd;
+mod data;
+use clap::{App, Arg, SubCommand};
+use cmd::{
+    Command, collect::Collect, concat::Concat, dimension::Dimension,
+    gs::Gapstrip, join::Join, pop::Pop, remove::Remove
+};
 use std::io;
-use std::io::stdout;
-use std::io::BufWriter;
-use std::io::ErrorKind;
-use std::io::Write;
-use std::path::Path;
-
-
-#[derive(Debug)]
-pub struct DataSource {
-    pub stdin: bool,
-    pub filepath: Option<String>,
-}
-
-impl DataSource {
-    pub fn get_sequence_collection(&self) -> Option<SequenceCollection> {
-        match self.stdin {
-            true => sequence_collection_from_stdin().ok(),
-            false => match &self.filepath {
-                Some(x) => sequence_collection_from_file(&Path::new(&x)).ok(),
-                None => None,
-            },
-        }
-    }
-    pub fn source_name(&self) -> String {
-        match self.stdin {
-            true => String::from("StdIn"),
-            false => format!("File: {}", self.filepath.clone().unwrap()),
-        }
-    }
-    pub fn from(path: &str) -> Self {
-        DataSource {
-            stdin: false,
-            filepath: Some(String::from(path)),
-        }
-    }
-    pub fn stdin() -> Self {
-        DataSource {
-            stdin: true,
-            filepath: None,
-        }
-    }
-}
-
-pub enum DataSink {
-    StdOut,
-    FilePath(String),
-}
-
-impl DataSink {
-    pub fn write_fasta<T: SequenceAccesors>(&self, seqs: T) -> io::Result<()> {
-        match self {
-            DataSink::StdOut => {
-                write_sequence_collection(seqs, stdout().lock())
-            }
-            DataSink::FilePath(x) => {
-                let file = File::create(x).unwrap();
-                write_sequence_collection(seqs, file)
-            }
-        }
-    }
-}
-
-pub fn pop_command(fs: DataSource, fo: DataSink, id: String) -> io::Result<()> {
-    let mut input = fs.get_sequence_collection().unwrap();
-    let seqs = input.move_up(&id);
-    match seqs {
-        Ok(_) => fo.write_fasta(input),
-        Err(x) => {
-            return Err(std::io::Error::new(
-                ErrorKind::Other,
-                format!("Could not pop reference {}.\n", x),
-            ))
-        }
-    }
-}
-
-pub fn gapstrip_command(fs: DataSource, fo: DataSink) -> io::Result<()> {
-    let input = fs.get_sequence_collection().unwrap();
-    let msa = match input.to_msa() {
-        Ok(x) => x,
-        Err(_) => {
-            return Err(std::io::Error::new(
-                ErrorKind::Other,
-                "Input needs to be an alignment. \
-                    All sequences should be the same length.\n",
-            ));
-        }
-    };
-    let msa = msa.gapstrip();
-    fo.write_fasta(msa)
-}
-
-pub fn dimension_command(fs: DataSource, expanded: bool) -> io::Result<()> {
-    let seqcol = fs.get_sequence_collection().unwrap();
-    let out = stdout();
-    let mut writer = BufWriter::new(out.lock());
-    writer.write_fmt(format_args!("Source: {}", fs.source_name()))?;
-    writer.write_fmt(format_args!("Number of sequences: {}", seqcol.size()))?;
-    let mut widths: Vec<usize> = seqcol.iter().map(|x| x.len()).collect();
-    widths.sort();
-    let widths_strings: Vec<String> =
-        widths.into_iter().map(|x| x.to_string()).collect();
-    if expanded {
-        writer.write_fmt(format_args!(
-            "Sequences width: [{:?}]",
-            widths_strings
-        ))?;
-    } else {
-        let max = widths_strings.last().unwrap();
-        let min = widths_strings.first().unwrap();
-        if min == max {
-            writer.write_fmt(format_args!("Sequences width: [{}]", min))?;
-        } else {
-            writer.write_fmt(format_args!(
-                "Sequences width: [{} - {}]",
-                min, max
-            ))?;
-        }
-    }
-    Ok(())
-}
-
-pub fn collect_command(ds: DataSink) -> io::Result<()> {
-    let msa = sequence_collection_from_stdin()?;
-    ds.write_fasta(msa)
-}
-
-/// Join two or more sequence collections into one.
-///
-pub fn join_command(dss: Vec<DataSource>, sink: DataSink) -> io::Result<()> {
-    let seqcols = dss
-        .iter()
-        .map(|x| x.get_sequence_collection().unwrap())
-        .collect::<Vec<_>>();
-    match join(seqcols) {
-        Ok(x) => sink.write_fasta(x)?,
-        Err(x) => eprintln!("{}", x),
-    }
-    Ok(())
-}
-
-//
-pub fn concat_command(dss: Vec<DataSource>, sink: DataSink) -> io::Result<()> {
-    let seqcols = dss
-        .iter()
-        .map(|x| x.get_sequence_collection().unwrap())
-        .collect::<Vec<_>>();
-    match concat(seqcols) {
-        Ok(x) => sink.write_fasta(x)?,
-        Err(x) => eprintln!("{}", x),
-    }
-    Ok(())
-}
-
-/// Remove Rows and columns from a MSA
-pub fn remove_command(
-        fs: DataSource,
-        fo: DataSink,
-        rows: Vec<usize>,
-        columns: Vec<usize>)
-        -> io::Result<()> {
-    let mut input = fs.get_sequence_collection().unwrap();
-    for i in rows {
-        input.remove(i);
-    }
-    if !columns.is_empty() {
-        let mut msa = match input.to_msa() {
-            Ok(x) => x,
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    ErrorKind::Other,
-                    "Input needs to be an alignment. \
-                        All sequences should be the same length.\n",
-                ));
-            }
-        };
-        match msa.remove_columns(columns) {
-            Ok(_) => {},
-            Err(x) => {
-                return  Err(std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("{}", x)
-                ))
-            }
-        }
-        input = msa.seq_col_owned();
-    }
-    fo.write_fasta(input)
-}
-
 
 pub fn main() -> io::Result<()> {
     let matches = App::new("Fasta Alignment Manipulator")
@@ -246,6 +55,7 @@ pub fn main() -> io::Result<()> {
                     .arg(Arg::with_name("id")
                         .long("id")
                         .takes_value(true)
+                        .required(true)
                         .help("The Id of the sequence to be popped")))
         .subcommand(SubCommand::with_name("join")
                     .about("Joins (merge vertically) two sequence collections into one file")
@@ -295,73 +105,17 @@ pub fn main() -> io::Result<()> {
                         .help("The id of the rows to be deleted")))
         .get_matches();
 
-    if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
-        let input = match gsmatches.value_of("input") {
-            None => DataSource::stdin(),
-            Some(x) => DataSource::from(&x),
-        };
-        let output = match gsmatches.value_of("output") {
-            None => DataSink::StdOut,
-            Some(x) => DataSink::FilePath(String::from(x)),
-        };
-        return gapstrip_command(input, output);
-    };
-    if let Some(dimatches) = matches.subcommand_matches("dimensions") {
-        let input = match dimatches.value_of("input") {
-            None => DataSource::stdin(),
-            Some(x) => DataSource::from(&x),
-        };
-        let expanded = dimatches.is_present("expanded");
-        return dimension_command(input, expanded);
-    };
-    if let Some(dimatches) = matches.subcommand_matches("collect") {
-        let input = dimatches.value_of("output").unwrap();
-        let ds = DataSink::FilePath(input.to_string());
-        return collect_command(ds);
-    };
-
-    if let Some(m) = matches.subcommand_matches("join") {
-        let inputs = m.values_of("input").unwrap();
-        let files: Vec<DataSource> =
-            inputs.map(|x| DataSource::from(x)).collect();
-        let sink = match m.value_of("output") {
-            None => DataSink::StdOut,
-            Some(x) => DataSink::FilePath(x.to_string()),
-        };
-        return join_command(files, sink);
-    }
-
-    if let Some(m) = matches.subcommand_matches("concat") {
-        let inputs = m.values_of("input").unwrap();
-        let files: Vec<DataSource> =
-        inputs.map(|x| DataSource::from(x)).collect();
-        let sink = match m.value_of("output") {
-            None => DataSink::StdOut,
-            Some(x) => DataSink::FilePath(x.to_string()),
-        };
-        return concat_command(files, sink);
-    }
-
-    if let Some(m) = matches.subcommand_matches("remove") {
-        let input = match m.value_of("input") {
-            None => DataSource::stdin(),
-            Some(x) => DataSource::from(&x),
-        };
-        let sink = match m.value_of("output") {
-            None => DataSink::StdOut,
-            Some(x) => DataSink::FilePath(x.to_string()),
-        };
-        let val_to_vec = |x:Values| x.filter_map(|y|
-            y.parse::<usize>().ok())
-            .into_iter()
-            .collect::<Vec<_>>();
-        let rows = m
-            .values_of("rows")
-            .map_or_else(|| vec![], |x| val_to_vec(x));
-        let cols = m
-            .values_of("cols")
-            .map_or_else(|| vec![], |x| val_to_vec(x));
-        remove_command(input, sink, rows, cols)?
+    let commands: Vec<Box<dyn Command>>= vec![
+        Box::new(Gapstrip{}),
+        Box::new(Pop{}),
+        Box::new(Dimension{}),
+        Box::new(Collect{}),
+        Box::new(Join{}),
+        Box::new(Concat{}),
+        Box::new(Remove{})
+    ];
+    for cmd in commands {
+        cmd.run(&matches)?;
     }
     Ok(())
 }
