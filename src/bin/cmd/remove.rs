@@ -57,7 +57,7 @@ impl Command for Remove {
             };
             let val_to_vec = |x:Values| x.filter_map(|y|
                 y.parse::<usize>().ok())
-                .into_iter()
+                .map(|x|x-1)
                 .collect::<Vec<_>>();
             let rows = m
                 .values_of("rows")
