@@ -4,7 +4,7 @@ mod data;
 use clap::{App, Arg, SubCommand};
 use cmd::{
     Command, collect::Collect, concat::Concat, dimension::Dimension,
-    gs::Gapstrip, join::Join, pop::Pop, remove::Remove
+    gs::Gapstrip, join::Join, pop::Pop, remove::Remove, edit::Edit
 };
 use std::io;
 
@@ -103,6 +103,30 @@ pub fn main() -> io::Result<()> {
                         .takes_value(true)
                         .min_values(1)
                         .help("The id of the rows to be deleted")))
+        .subcommand(SubCommand::with_name("edit")
+                    .about("Edit MSA content")
+                    .arg(Arg::with_name("input")
+                        .short("i")
+                        .long("in")
+                        .takes_value(true)
+                        .help("The input file"))
+                    .arg(Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("The output file"))
+                    .arg(Arg::with_name("at")
+                        .long("at")
+                        .takes_value(true)
+                        .required(true)
+                        .min_values(2)
+                        .help("X,Y positions of the edit point"))
+                    .arg(Arg::with_name("content")
+                        .short("c")
+                        .long("content")
+                        .required(true)
+                        .takes_value(true)
+                        .help("The replacement content of the edit cells")))
         .get_matches();
 
     let commands: Vec<Box<dyn Command>>= vec![
@@ -112,7 +136,8 @@ pub fn main() -> io::Result<()> {
         Box::new(Collect{}),
         Box::new(Join{}),
         Box::new(Concat{}),
-        Box::new(Remove{})
+        Box::new(Remove{}),
+        Box::new(Edit{})
     ];
     for cmd in commands {
         cmd.run(&matches)?;
