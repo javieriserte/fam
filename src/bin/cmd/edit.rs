@@ -14,18 +14,30 @@ impl Edit {
             content: Vec<&str>)
             -> io::Result<()> {
         let mut input = fs.get_sequence_collection().unwrap();
-        content.iter().enumerate().for_each(
-            |(x, c)| {
-                let seq = input.get_mut(at[0]-1+x).unwrap();
-                let new=c.chars().collect::<Vec<_>>();
-                let count = new.len();
-                match seq.edit_replace(new, at[1]-1, count) {
-                    Ok(_) => {}
-                    Err(x) => {println!("{}", x)}
+        for (x, c) in content.iter().enumerate() {
+            let row_idx = at[0]-1+x;
+            match input.get_mut(row_idx) {
+                Some(seq) => {
+                    let new=c.chars().collect::<Vec<_>>();
+                    let count = new.len();
+                    match seq.edit_replace(new, row_idx, count) {
+                        Ok(_) => {}
+                        Err(x) => {
+                            return  Err(std::io::Error::new(
+                                ErrorKind::Other,
+                                format!("{}.\n", x))
+                            )
+                        }
+                    }
                 }
-                println!("hola");
+                None => {
+                    return Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Row index out of bounds: {}.", row_idx))
+                    )
+                }
             }
-        );
+        };
         fo.write_fasta(input)
     }
 }
@@ -41,7 +53,6 @@ impl Command for Edit {
                 None => DataSink::StdOut,
                 Some(x) => DataSink::FilePath(String::from(x)),
             };
-            let id = m.value_of("id").unwrap();
             let at = m.values_of("at")
                 .unwrap()
                 .map(|x| x.parse::<usize>().ok())
@@ -49,7 +60,7 @@ impl Command for Edit {
             if at.iter().any(|x| x.is_none()) || at.len() != 2 {
                 return Err(std::io::Error::new(
                     ErrorKind::Other,
-                    format!("Can not parse X, Y edit positions.\n",),
+                    format!("Can not parse X, Y edit positions.",),
                 ))
             }
             let at = at

@@ -126,6 +126,7 @@ pub fn main() -> io::Result<()> {
                         .long("content")
                         .required(true)
                         .takes_value(true)
+                        .min_values(1)
                         .help("The replacement content of the edit cells")))
         .get_matches();
 
@@ -140,7 +141,10 @@ pub fn main() -> io::Result<()> {
         Box::new(Edit{})
     ];
     for cmd in commands {
-        cmd.run(&matches)?;
+        match cmd.run(&matches) {
+            Ok(_) => {}
+            Err(x) => {println!("Error: {}", x)}
+        }
     }
     Ok(())
 }
