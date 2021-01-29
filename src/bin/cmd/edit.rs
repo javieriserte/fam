@@ -7,20 +7,21 @@ use super::Command;
 pub struct Edit{}
 
 impl Edit {
-    pub fn edit_command(
+    pub fn edit_replace(
             fs: DataSource,
             fo: DataSink,
             at: Vec<usize>,
             content: Vec<&str>)
             -> io::Result<()> {
         let mut input = fs.get_sequence_collection().unwrap();
+        let col_idx = at[1]-1;
         for (x, c) in content.iter().enumerate() {
             let row_idx = at[0]-1+x;
             match input.get_mut(row_idx) {
                 Some(seq) => {
                     let new=c.chars().collect::<Vec<_>>();
                     let count = new.len();
-                    match seq.edit_replace(new, row_idx, count) {
+                    match seq.edit_replace(new, col_idx, count) {
                         Ok(_) => {}
                         Err(x) => {
                             return  Err(std::io::Error::new(
@@ -40,39 +41,155 @@ impl Edit {
         };
         fo.write_fasta(input)
     }
+    pub fn edit_insert(
+            fs: DataSource,
+            fo: DataSink,
+            at: Vec<usize>,
+            content: Vec<&str>)
+            -> io::Result<()> {
+        let mut input = fs.get_sequence_collection().unwrap();
+        let col_idx = at[1]-1;
+        for (x, c) in content.iter().enumerate() {
+            let row_idx = at[0]-1+x;
+            match input.get_mut(row_idx) {
+                Some(seq) => {
+                    let new=c.chars().collect::<Vec<_>>();
+                    match seq.edit_insert(new, col_idx) {
+                        Ok(_) => {}
+                        Err(x) => {
+                            return  Err(std::io::Error::new(
+                                ErrorKind::Other,
+                                format!("{}.\n", x))
+                            )
+                        }
+                    }
+                }
+                None => {
+                    return Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Row index out of bounds: {}.", row_idx))
+                    )
+                }
+            }
+        };
+        fo.write_fasta(input)
+    }
+    pub fn edit_delete(
+            fs: DataSource,
+            fo: DataSink,
+            at: Vec<usize>,
+            width: usize,
+            height: usize)
+            -> io::Result<()> {
+        let mut input = fs.get_sequence_collection().unwrap();
+        let col_idx = at[1]-1;
+        println!("Col Index: {}", col_idx);
+        for x in 0..height {
+            let row_idx = at[0]-1+x;
+            input
+                .get_mut(row_idx)
+                .ok_or(std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Row index out of bounds: {}.", row_idx)))?
+                .edit_delete(col_idx, width)?;
+        };
+        fo.write_fasta(input)
+    }
 }
 
 impl Command for Edit {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("edit") {
-            let input = match m.value_of("input") {
-                None => DataSource::stdin(),
-                Some(x) => DataSource::from(&x),
+            if let Some(m1) = m.subcommand_matches("replace") {
+                let input = match m1.value_of("input") {
+                    None => DataSource::stdin(),
+                    Some(x) => DataSource::from(&x),
+                };
+                let output = match m1.value_of("output") {
+                    None => DataSink::StdOut,
+                    Some(x) => DataSink::FilePath(String::from(x)),
+                };
+                let at = m1.values_of("at")
+                    .unwrap()
+                    .map(|x| x.parse::<usize>().ok())
+                    .collect::<Vec<Option<usize>>>();
+                if at.iter().any(|x| x.is_none()) || at.len() != 2 {
+                    return Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Can not parse X, Y edit positions.",),
+                    ))
+                }
+                let at = at
+                    .iter()
+                    .take(2)
+                    .map(|x| x.unwrap())
+                    .collect::<Vec<usize>>();
+                let content = m1.values_of("content")
+                    .unwrap()
+                    .collect::<Vec<&str>>();
+                Self::edit_replace(input, output, at, content)?
             };
-            let output = match m.value_of("output") {
-                None => DataSink::StdOut,
-                Some(x) => DataSink::FilePath(String::from(x)),
+            if let Some(m1) = m.subcommand_matches("insert") {
+                let input = match m1.value_of("input") {
+                    None => DataSource::stdin(),
+                    Some(x) => DataSource::from(&x),
+                };
+                let output = match m1.value_of("output") {
+                    None => DataSink::StdOut,
+                    Some(x) => DataSink::FilePath(String::from(x)),
+                };
+                let at = m1.values_of("at")
+                    .unwrap()
+                    .map(|x| x.parse::<usize>().ok())
+                    .collect::<Vec<Option<usize>>>();
+                if at.iter().any(|x| x.is_none()) || at.len() != 2 {
+                    return Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Can not parse X, Y edit positions.",),
+                    ))
+                }
+                let at = at
+                    .iter()
+                    .take(2)
+                    .map(|x| x.unwrap())
+                    .collect::<Vec<usize>>();
+                let content = m1.values_of("content")
+                    .unwrap()
+                    .collect::<Vec<&str>>();
+                Self::edit_insert(input, output, at, content)?
             };
-            let at = m.values_of("at")
-                .unwrap()
-                .map(|x| x.parse::<usize>().ok())
-                .collect::<Vec<Option<usize>>>();
-            if at.iter().any(|x| x.is_none()) || at.len() != 2 {
-                return Err(std::io::Error::new(
+            if let Some(m1) = m.subcommand_matches("delete") {
+                let input = match m1.value_of("input") {
+                    None => DataSource::stdin(),
+                    Some(x) => DataSource::from(&x),
+                };
+                let output = match m1.value_of("output") {
+                    None => DataSink::StdOut,
+                    Some(x) => DataSink::FilePath(String::from(x)),
+                };
+                let at = m1.values_of("at")
+                    .unwrap()
+                    .map(|x| x.parse::<usize>().ok())
+                    .collect::<Vec<Option<usize>>>();
+                if at.iter().any(|x| x.is_none()) || at.len() != 2 {
+                    return Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Can not parse X, Y edit positions.",),
+                    ))
+                }
+                let at = at
+                    .iter()
+                    .take(2)
+                    .map(|x| x.unwrap())
+                    .collect::<Vec<usize>>();
+                let err_gen = |_| Err(std::io::Error::new(
                     ErrorKind::Other,
-                    format!("Can not parse X, Y edit positions.",),
-                ))
-            }
-            let at = at
-                .iter()
-                .take(2)
-                .map(|x| x.unwrap())
-                .collect::<Vec<usize>>();
-            let content = m.values_of("content")
-                .unwrap()
-                .collect::<Vec<&str>>();
-            Self::edit_command(input, output, at, content)?
-        };
+                    format!("Can not parse Width or Height.")));
+                let width = m1.value_of("width").unwrap().parse::<usize>().or_else(err_gen)?;
+                let height = m1.value_of("height").unwrap().parse::<usize>().or_else(err_gen)?;
+                Self::edit_delete(input, output, at, width, height)?
+            };
+        }
         Ok(())
     }
 }

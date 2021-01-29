@@ -4,7 +4,7 @@ pub mod fastaio;
 pub mod merge;
 
 pub mod seqs {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, io::ErrorKind};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -44,6 +44,14 @@ pub mod seqs {
                     write!(f, "Attempted to access an empty sequence")
                 }
             }
+        }
+    }
+    impl From<SeqError> for std::io::Error {
+        fn from(x: SeqError) -> Self {
+            return std::io::Error::new(
+                ErrorKind::Other,
+                format!("{}.\n", x)
+            )
         }
     }
 
