@@ -4,7 +4,7 @@ pub mod fastaio;
 pub mod merge;
 
 pub mod seqs {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, io::ErrorKind};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -44,6 +44,14 @@ pub mod seqs {
                     write!(f, "Attempted to access an empty sequence")
                 }
             }
+        }
+    }
+    impl From<SeqError> for std::io::Error {
+        fn from(x: SeqError) -> Self {
+            return std::io::Error::new(
+                ErrorKind::Other,
+                format!("{}.\n", x)
+            )
         }
     }
 
@@ -457,6 +465,8 @@ pub mod seqs {
             self.ids.contains_key(id)
         }
 
+        /// Remove row in Sequence collection.
+        /// args: index: 0-based index of the element to be removed.
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
             if self.ids.len() > 0 && index < self.size() {
                 let r = self.sequences.remove(index);
@@ -693,6 +703,12 @@ pub mod seqs {
             } else {
                 None
             }
+        }
+        pub fn seq_col(&self) -> &SequenceCollection {
+            &self.seqs
+        }
+        pub fn seq_col_owned(self) -> SequenceCollection {
+            self.seqs
         }
     }
 
