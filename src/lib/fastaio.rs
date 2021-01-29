@@ -93,5 +93,9 @@ mod test {
             vec!['T', 'C', 'T', 'C', 'G', 'A']
         );
         assert_eq!(msa.get(2).unwrap().id(), "S3");
+        assert_eq!(
+            *msa.get(2).unwrap().seq().unwrap(),
+            vec!['A', 'T', 'G', 'T', 'A', 'G']
+        );
     }
 }
