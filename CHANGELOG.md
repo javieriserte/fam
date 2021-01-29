@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+[#7] - 2021-01-29 Added CLI for edit sequences Ver. 1.
 [#3] - 2020-12-04 Implemented some edit capabilities
 [#5] - 2020-09-10 Use HashMap in sequenceCollection
 [#6] - 2020-09-08 Added get_mut to sequenceCollection
