@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 - Versión 0.0.3-dev - 2021-01-29
 
+- [#11] - 2021-02-01 Added logo icon
+
 ### New features
 
 - [#7] - 2021-01-29 Added CLI for edit sequences Ver. 1.
