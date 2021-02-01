@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Current Version
 
-- Versión 0.0.3 - 2021-01-29
+- Versión 0.0.3-dev - 2021-01-29
 
 ### New features
 
