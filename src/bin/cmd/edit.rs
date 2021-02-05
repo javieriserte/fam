@@ -39,7 +39,7 @@ impl Edit {
                 }
             }
         };
-        fo.write_fasta(input)
+        fo.write_fasta(&input)
     }
     pub fn edit_insert(
             fs: DataSource,
@@ -72,7 +72,7 @@ impl Edit {
                 }
             }
         };
-        fo.write_fasta(input)
+        fo.write_fasta(&input)
     }
     pub fn edit_delete(
             fs: DataSource,
@@ -93,7 +93,7 @@ impl Edit {
                     format!("Row index out of bounds: {}.", row_idx)))?
                 .edit_delete(col_idx, width)?;
         };
-        fo.write_fasta(input)
+        fo.write_fasta(&input)
     }
 }
 
