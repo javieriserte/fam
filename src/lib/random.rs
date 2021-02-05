@@ -3,6 +3,7 @@ extern crate rand;
 use rand::{prelude::SliceRandom, thread_rng};
 pub trait RandomGen {
     fn shuffle(&mut self, fixed_gaps: bool);
+    /// Shuffle rows in a MSA
     fn shuffle_rows(&mut self);
     fn shuffle_cols(&mut self);
 }

@@ -10,7 +10,7 @@ impl Pop {
         let mut input = fs.get_sequence_collection().unwrap();
         let seqs = input.move_up(&id);
         match seqs {
-            Ok(_) => fo.write_fasta(input),
+            Ok(_) => fo.write_fasta(&input),
             Err(x) => {
                 return Err(std::io::Error::new(
                     ErrorKind::Other,

@@ -14,7 +14,7 @@ impl Join {
             .map(|x| x.get_sequence_collection().unwrap())
             .collect::<Vec<_>>();
         match join(seqcols) {
-            Ok(x) => sink.write_fasta(x)?,
+            Ok(x) => sink.write_fasta(&x)?,
             Err(x) => eprintln!("{}", x),
         }
         Ok(())
