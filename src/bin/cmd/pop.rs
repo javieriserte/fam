@@ -25,7 +25,7 @@ impl Command for Pop {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("pop") {
             let input = match m.value_of("input") {
-                None => DataSource::stdin(),
+                None => DataSource::StdIn,
                 Some(x) => DataSource::from(&x),
             };
             let output = match m.value_of("output") {

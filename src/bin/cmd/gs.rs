@@ -27,7 +27,7 @@ impl Command for Gapstrip {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
             let input = match gsmatches.value_of("input") {
-                None => DataSource::stdin(),
+                None => DataSource::StdIn,
                 Some(x) => DataSource::from(&x),
             };
             let output = match gsmatches.value_of("output") {

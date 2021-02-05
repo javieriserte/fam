@@ -28,7 +28,7 @@ pub fn datasink(matches: &ArgMatches) -> DataSink {
 /// Creates a DataSource struct from the commandline arguments
 fn datasource(matches: &ArgMatches) -> DataSource {
     match matches.value_of("input") {
-        None => DataSource::stdin(),
+        None => DataSource::StdIn,
         Some(x) => DataSource::from(&x),
     }
 }
