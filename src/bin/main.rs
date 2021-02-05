@@ -2,10 +2,7 @@ extern crate clap;
 mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
-use cmd::{
-    Command, collect::Collect, concat::Concat, dimension::Dimension,
-    gs::Gapstrip, join::Join, pop::Pop, remove::Remove, edit::Edit
-};
+use cmd::{Command, collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, gs::Gapstrip, join::Join, pop::Pop, random::Random, remove::Remove};
 use std::io;
 
 pub fn main() -> io::Result<()> {
@@ -183,6 +180,49 @@ pub fn main() -> io::Result<()> {
                     .takes_value(true)
                     .help(".")))
             )
+        .subcommand(SubCommand::with_name("shuffle")
+            .about("Randomize MSA")
+            .subcommand(SubCommand::with_name("all")
+                .about("Shuffle content of rows")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file"))
+                .arg(Arg::with_name("fixed")
+                    .short("f")
+                    .long("fixed")
+                    .takes_value(false)
+                    .help("Keep gaps in a fixed position")))
+            .subcommand(SubCommand::with_name("rows")
+                .about("Shuffle row order")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")))
+            .subcommand(SubCommand::with_name("cols")
+                .about("Shuffle column order")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file"))))
         .get_matches();
 
     let commands: Vec<Box<dyn Command>>= vec![
@@ -193,7 +233,8 @@ pub fn main() -> io::Result<()> {
         Box::new(Join{}),
         Box::new(Concat{}),
         Box::new(Remove{}),
-        Box::new(Edit{})
+        Box::new(Edit{}),
+        Box::new(Random{})
     ];
     for cmd in commands {
         match cmd.run(&matches) {

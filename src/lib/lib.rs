@@ -2,6 +2,7 @@ pub mod edit;
 pub mod edit_msa;
 pub mod fastaio;
 pub mod merge;
+pub mod random;
 
 pub mod seqs {
     use std::{collections::HashMap, io::ErrorKind};
