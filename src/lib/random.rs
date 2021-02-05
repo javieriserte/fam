@@ -1,4 +1,4 @@
-use crate::seqs::{Alignment, SeqError, SequenceAccesors};
+use crate::seqs::{Alignment, SequenceAccesors};
 extern crate rand;
 use rand::{prelude::SliceRandom, thread_rng};
 pub trait RandomGen {
@@ -60,10 +60,7 @@ impl RandomGen for Alignment {
         slice.shuffle(&mut rng);
         for (old, new) in (0..self.length()).into_iter().zip(slice.iter()) {
             for i in 0..self.size() {
-                let c_seq = self.get_mut(i).unwrap().seq_mut().unwrap();
-                let tmp = c_seq[old];
-                c_seq[old] = c_seq[*new];
-                c_seq[*new] = tmp;
+                self.get_mut(i).unwrap().seq_mut().unwrap().swap(old, *new);
             }
         }
     }
@@ -79,15 +76,21 @@ mod test {
         let mut msa = Alignment::new();
         let s1 = AnnotatedSequence::from_string(
             String::from("s1"),
-            String::from("ACT--AC--GA--TGGABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+            String::from(
+                "ACT--AC--GA--TGGABCDEFGHIJKLMNOPQRSTUVWX\
+                YZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
         );
         let s2 = AnnotatedSequence::from_string(
             String::from("s2"),
-            String::from("CCTG-CTG-CTG-CT-ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+            String::from(
+                "CCTG-CTG-CTG-CT-ABCDEFGHIJKLMNOPQRSTUVWX\
+                YZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
         );
         let s3 = AnnotatedSequence::from_string(
             String::from("s3"),
-            String::from("-CAGACAGACAGACA-ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+            String::from(
+                "-CAGACAGACAGACA-ABCDEFGHIJKLMNOPQRSTUVWX\
+                YZABCDEFGHIJKLMNOPQRSTUVWXYZ"),
         );
         msa.add(s1).unwrap();
         msa.add(s2).unwrap();
@@ -135,6 +138,11 @@ mod test {
             .collect::<Vec<_>>();
         assert_ne!(prev, post);
         assert_ne!(gapped_prev, gapped_post);
+    }
+    #[test]
+    fn test_random_empty_msa() {
+        let mut msa = Alignment::new();
+        msa.shuffle(false);
     }
 }
 
