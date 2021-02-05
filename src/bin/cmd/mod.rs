@@ -8,6 +8,7 @@ pub mod join;
 pub mod concat;
 pub mod remove;
 pub mod edit;
+pub mod random;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {
