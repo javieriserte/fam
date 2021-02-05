@@ -1,7 +1,7 @@
 
 use std::io::{self};
 use crate::data::{DataSink, DataSource};
-use super::Command;
+use super::{Command, datasink};
 use clap::{ArgMatches};
 use famlib::merge::{concat};
 
@@ -26,10 +26,7 @@ impl Command for Concat {
             let inputs = m.values_of("input").unwrap();
             let files: Vec<DataSource> =
             inputs.map(|x| DataSource::from(x)).collect();
-            let sink = match m.value_of("output") {
-                None => DataSink::StdOut,
-                Some(x) => DataSink::FilePath(x.to_string()),
-            };
+            let sink = datasink(m);
             return Self::concat_command(files, sink);
         }
         Ok(())
