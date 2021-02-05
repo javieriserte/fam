@@ -1,7 +1,7 @@
 use std::io::{self, ErrorKind};
 use famlib::seqs::SequenceAccesors;
 use crate::data::{DataSink, DataSource};
-use super::Command;
+use super::{Command, datasink, datasource};
 
 pub struct Pop{}
 
@@ -24,14 +24,8 @@ impl Pop {
 impl Command for Pop {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("pop") {
-            let input = match m.value_of("input") {
-                None => DataSource::StdIn,
-                Some(x) => DataSource::from(&x),
-            };
-            let output = match m.value_of("output") {
-                None => DataSink::StdOut,
-                Some(x) => DataSink::FilePath(String::from(x)),
-            };
+            let input = datasource(m);
+            let output = datasink(m);
             let id = m.value_of("id").unwrap();
             Self::pop_command(input, output, String::from(id))?
         };

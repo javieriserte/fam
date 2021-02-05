@@ -2,7 +2,7 @@ use std::io::{self, ErrorKind};
 use famlib::seqs::SequenceAccesors;
 use famlib::edit::EditSequence;
 use crate::data::{DataSink, DataSource};
-use super::Command;
+use super::{Command, datasink, datasource};
 
 pub struct Edit{}
 
@@ -101,14 +101,8 @@ impl Command for Edit {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("edit") {
             if let Some(m1) = m.subcommand_matches("replace") {
-                let input = match m1.value_of("input") {
-                    None => DataSource::StdIn,
-                    Some(x) => DataSource::from(&x),
-                };
-                let output = match m1.value_of("output") {
-                    None => DataSink::StdOut,
-                    Some(x) => DataSink::FilePath(String::from(x)),
-                };
+                let input = datasource(m1);
+                let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()
                     .map(|x| x.parse::<usize>().ok())
@@ -130,14 +124,8 @@ impl Command for Edit {
                 Self::edit_replace(input, output, at, content)?
             };
             if let Some(m1) = m.subcommand_matches("insert") {
-                let input = match m1.value_of("input") {
-                    None => DataSource::StdIn,
-                    Some(x) => DataSource::from(&x),
-                };
-                let output = match m1.value_of("output") {
-                    None => DataSink::StdOut,
-                    Some(x) => DataSink::FilePath(String::from(x)),
-                };
+                let input = datasource(m1);
+                let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()
                     .map(|x| x.parse::<usize>().ok())
@@ -159,14 +147,8 @@ impl Command for Edit {
                 Self::edit_insert(input, output, at, content)?
             };
             if let Some(m1) = m.subcommand_matches("delete") {
-                let input = match m1.value_of("input") {
-                    None => DataSource::StdIn,
-                    Some(x) => DataSource::from(&x),
-                };
-                let output = match m1.value_of("output") {
-                    None => DataSink::StdOut,
-                    Some(x) => DataSink::FilePath(String::from(x)),
-                };
+                let input = datasource(m1);
+                let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()
                     .map(|x| x.parse::<usize>().ok())

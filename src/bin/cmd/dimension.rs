@@ -1,7 +1,7 @@
 
 use std::io::{self, BufWriter, Write, stdout};
 use crate::data::{DataSource};
-use super::Command;
+use super::{Command, datasource};
 use famlib::seqs::SequenceAccesors;
 use clap::{ArgMatches};
 
@@ -40,10 +40,7 @@ impl Dimension {
 impl Command for Dimension {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(dimatches) = matches.subcommand_matches("dimensions") {
-            let input = match dimatches.value_of("input") {
-                None => DataSource::StdIn,
-                Some(x) => DataSource::from(&x),
-            };
+            let input = datasource(dimatches);
             let expanded = dimatches.is_present("expanded");
             return Dimension::dimension_command(input, expanded);
         };
