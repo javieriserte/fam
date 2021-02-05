@@ -13,38 +13,29 @@ use std::io::stdout;
 #[derive(Debug)]
 /// Representation of the reading input of a MSA or sequence collection.
 /// TODO: Convert it to enum
-pub struct DataSource {
-    pub stdin: bool,
-    pub filepath: Option<String>,
+pub enum DataSource {
+    StdIn,
+    FilePath(String),
 }
 
 impl DataSource {
     pub fn get_sequence_collection(&self) -> Option<SequenceCollection> {
-        match self.stdin {
-            true => sequence_collection_from_stdin().ok(),
-            false => match &self.filepath {
-                Some(x) => sequence_collection_from_file(&Path::new(&x)).ok(),
-                None => None,
-            },
+        match self {
+            DataSource::StdIn => sequence_collection_from_stdin().ok(),
+            DataSource::FilePath(file) => sequence_collection_from_file(
+                &Path::new(&file)).ok()
         }
     }
     pub fn source_name(&self) -> String {
-        match self.stdin {
-            true => String::from("StdIn"),
-            false => format!("File: {}", self.filepath.clone().unwrap()),
+        match self {
+            DataSource::StdIn => String::from("StdIn"),
+            DataSource::FilePath(file) => format!(
+                "File: {}", file
+            ),
         }
     }
     pub fn from(path: &str) -> Self {
-        DataSource {
-            stdin: false,
-            filepath: Some(String::from(path)),
-        }
-    }
-    pub fn stdin() -> Self {
-        DataSource {
-            stdin: true,
-            filepath: None,
-        }
+        DataSource::FilePath(String::from(path))
     }
 }
 

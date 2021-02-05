@@ -41,7 +41,7 @@ impl Command for Dimension {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(dimatches) = matches.subcommand_matches("dimensions") {
             let input = match dimatches.value_of("input") {
-                None => DataSource::stdin(),
+                None => DataSource::StdIn,
                 Some(x) => DataSource::from(&x),
             };
             let expanded = dimatches.is_present("expanded");

@@ -49,7 +49,7 @@ impl Command for Remove {
     fn run(&self, matches: &ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("remove") {
             let input = match m.value_of("input") {
-                None => DataSource::stdin(),
+                None => DataSource::StdIn,
                 Some(x) => DataSource::from(&x),
             };
             let sink = match m.value_of("output") {

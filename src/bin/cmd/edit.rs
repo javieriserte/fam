@@ -102,7 +102,7 @@ impl Command for Edit {
         if let Some(m) = matches.subcommand_matches("edit") {
             if let Some(m1) = m.subcommand_matches("replace") {
                 let input = match m1.value_of("input") {
-                    None => DataSource::stdin(),
+                    None => DataSource::StdIn,
                     Some(x) => DataSource::from(&x),
                 };
                 let output = match m1.value_of("output") {
@@ -131,7 +131,7 @@ impl Command for Edit {
             };
             if let Some(m1) = m.subcommand_matches("insert") {
                 let input = match m1.value_of("input") {
-                    None => DataSource::stdin(),
+                    None => DataSource::StdIn,
                     Some(x) => DataSource::from(&x),
                 };
                 let output = match m1.value_of("output") {
@@ -160,7 +160,7 @@ impl Command for Edit {
             };
             if let Some(m1) = m.subcommand_matches("delete") {
                 let input = match m1.value_of("input") {
-                    None => DataSource::stdin(),
+                    None => DataSource::StdIn,
                     Some(x) => DataSource::from(&x),
                 };
                 let output = match m1.value_of("output") {
