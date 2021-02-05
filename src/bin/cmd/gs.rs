@@ -20,7 +20,7 @@ impl Gapstrip {
             }
         };
         let msa = msa.gapstrip();
-        fo.write_fasta(msa)
+        fo.write_fasta(&msa)
     }
 }
 impl Command for Gapstrip {

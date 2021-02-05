@@ -7,6 +7,7 @@ use famlib::{edit_msa::EditMSA, seqs::SequenceAccesors};
 
 pub struct Remove {}
 
+/// Remove Sequence command
 impl Remove {
     /// Remove Rows and columns from a MSA
     pub fn remove_command(
@@ -41,7 +42,7 @@ impl Remove {
             }
             input = msa.seq_col_owned();
         }
-        fo.write_fasta(input)
+        fo.write_fasta(&input)
     }
 }
 impl Command for Remove {

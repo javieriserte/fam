@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Versión 0.0.3-dev - 2021-01-29
 
+- [#13,#14] - 2021-02-05 Enhance DataSink and DataSource
 - [#11] - 2021-02-01 Added logo icon
 - [#10] - 2021-02-05 Shuffle MSA
 

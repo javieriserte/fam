@@ -9,7 +9,7 @@ pub struct Collect {}
 impl Collect {
     pub fn collect_command(ds: DataSink) -> io::Result<()> {
         let msa = sequence_collection_from_stdin()?;
-        ds.write_fasta(msa)
+        ds.write_fasta(&msa)
     }
 }
 impl Command for Collect {
