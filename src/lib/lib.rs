@@ -3,6 +3,7 @@ pub mod edit_msa;
 pub mod fastaio;
 pub mod merge;
 pub mod random;
+pub mod conservation;
 
 pub mod seqs {
     use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};
@@ -272,6 +273,7 @@ pub mod seqs {
                 let ref_len = self.sequences[0].len();
                 if self.sequences.iter().all(|x| x.len() == ref_len) {
                     msa.seqs = self;
+                    msa.length = Some(ref_len);
                     Ok(msa)
                 } else {
                     Err(self)
