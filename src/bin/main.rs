@@ -2,7 +2,7 @@ extern crate clap;
 mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
-use cmd::{Command, collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, gs::Gapstrip, join::Join, pop::Pop, random::Random, remove::Remove};
+use cmd::{Command, collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, gs::Gapstrip, join::Join, onepixel::OnePixel, pop::Pop, random::Random, remove::Remove};
 use std::io;
 
 pub fn main() -> io::Result<()> {
@@ -223,6 +223,33 @@ pub fn main() -> io::Result<()> {
                     .long("out")
                     .takes_value(true)
                     .help("The output file"))))
+        .subcommand(SubCommand::with_name("plot")
+            .about("Create a simple plot of the MSA")
+            .arg(Arg::with_name("input")
+                .short("i")
+                .long("in")
+                .takes_value(true)
+                .help("The input file"))
+            .arg(Arg::with_name("output")
+                .short("o")
+                .long("out")
+                .required(true)
+                .takes_value(true)
+                .help("The output PNG file"))
+            .arg(Arg::with_name("is_protein")
+                .long("is_protein")
+                .takes_value(false)
+                .help("Use a protein color scheme [default]"))
+            .arg(Arg::with_name("is_nucleic")
+                .long("is_nucleic")
+                .takes_value(false)
+                .help("Use a nucleic acid color scheme")
+                .conflicts_with("is_protein"))
+            .arg(Arg::with_name("pixel_size")
+                .long("--pixel_size")
+                .takes_value(true)
+                .default_value("1")
+                .help("Keep gaps in a fixed position")))
         .get_matches();
 
     let commands: Vec<Box<dyn Command>>= vec![
@@ -234,7 +261,8 @@ pub fn main() -> io::Result<()> {
         Box::new(Concat{}),
         Box::new(Remove{}),
         Box::new(Edit{}),
-        Box::new(Random{})
+        Box::new(Random{}),
+        Box::new(OnePixel{})
     ];
     for cmd in commands {
         match cmd.run(&matches) {
