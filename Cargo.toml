@@ -9,6 +9,9 @@ edition = "2018"
 [dependencies]
 clap = "2"
 rand = "0.8.3"
+graphics_buffer = "0.7.5"
+piston2d-graphics = "0.37.0"
+tempfile = "3.2.0"
 
 [lib]
 name = "famlib"

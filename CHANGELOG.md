@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Versión 0.0.3-dev - 2021-01-29
 
+- [#12] - 2021-02-11 Draw one pixel MSA plots
 - [#9] - 2021-02-09 Computes conservation using Shannon entropy
 - [#16] - 2021-02-08 Implement Display for Alinment and SequenceCollection
 - [#17] - 2021-02-05 Modify code to use datasink and datasource functions
