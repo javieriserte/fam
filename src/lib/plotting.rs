@@ -1,9 +1,10 @@
 extern crate graphics;
 extern crate tempfile;
 
-use std::{io::Result, path::Path};
+use std::{io::Result, path::Path, time};
 use graphics_buffer::*;
 use graphics::rectangle;
+use time::SystemTime;
 
 use crate::seqs::{Alignment, SequenceAccesors};
 
@@ -123,8 +124,21 @@ impl ProteinColors {
                 true => Box::new(ProteinColors::new()),
                 false => Box::new(NucleicAcidColors::new())
             };
+            let now = SystemTime::now();
+            let mut last = 0u128;
             self.msa.iter().enumerate().for_each(
-                |(i, x)| x.seq().unwrap().iter().enumerate().for_each(
+                |(i, x)| {
+                    if i % 100 == 0 {
+                        let current = now.elapsed().unwrap().as_millis();
+                        println!(
+                            "Row:{} = {:?} secs | Delta = {}",
+                            i,
+                            current,
+                            current-last
+                        );
+                        last = current;
+                    }
+                    x.seq().unwrap().iter().enumerate().for_each(
                     |(j, c)| {
                         let color = color_scheme.color(c);
                         let x = margin as f64 + j as f64*self.pixel_size as f64;
@@ -136,7 +150,7 @@ impl ProteinColors {
                             &mut buffer,
                         );
                     }
-                )
+                )}
             );
             // Save the buffer
             let x = outfile.display().to_string();
