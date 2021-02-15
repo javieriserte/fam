@@ -7,7 +7,7 @@ use std::io;
 
 pub fn main() -> io::Result<()> {
     let matches = App::new("Fasta Alignment Manipulator")
-        .version("0.0.2-dev")
+        .version("0.0.4")
         .author("Javier A. Iserte <jiserte@leloir.org.ar>")
         .about("Does many common manipulation of fasta files.")
         .subcommand(SubCommand::with_name("dimensions")
