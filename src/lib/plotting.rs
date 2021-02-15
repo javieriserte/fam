@@ -3,7 +3,6 @@ extern crate tempfile;
 
 use std::{io::Result, path::Path};
 use graphics_buffer::*;
-use graphics::rectangle;
 
 use crate::seqs::{Alignment, SequenceAccesors};
 
@@ -115,29 +114,30 @@ impl ProteinColors {
         }
         pub fn save_png(&self, outfile: &Path) -> Result<()> {
             let margin:u32 = 20;
-            let width:u32 = self.msa.length() as u32 * self.pixel_size as u32 + 2 * margin;
-            let height:u32 = self.msa.size() as u32 * self.pixel_size as u32 + 2 * margin;
+            let length = self.msa.length();
+            let size = self.msa.size();
+            let ps = self.pixel_size as u32;
+            let width:u32 = length as u32 * ps + 2 * margin;
+            let height:u32 = size as u32 * ps + 2 * margin;
             let mut buffer = RenderBuffer::new(width, height);
             buffer.clear([1.0, 1.0, 1.0, 1.0]);
             let color_scheme: Box<dyn ColorScheme> = match self.is_protein {
                 true => Box::new(ProteinColors::new()),
                 false => Box::new(NucleicAcidColors::new())
             };
-            self.msa.iter().enumerate().for_each(
-                |(i, x)| x.seq().unwrap().iter().enumerate().for_each(
-                    |(j, c)| {
-                        let color = color_scheme.color(c);
-                        let x = margin as f64 + j as f64*self.pixel_size as f64;
-                        let y = margin as f64 + i as f64*self.pixel_size as f64;
-                        rectangle(
-                            color,
-                            [x, y, self.pixel_size as f64, self.pixel_size as f64],
-                            IDENTITY,
-                            &mut buffer,
-                        );
+            for i in 0..size {
+                let cas = self.msa.get(i).unwrap().seq().unwrap();
+                for j in 0..length {
+                    let color = color_scheme.color(&cas[j]);
+                    let x = margin + j as u32 * ps;
+                    let y = margin + i as u32 * ps;
+                    for k1 in 0..ps {
+                        for k2 in 0..ps {
+                            buffer.set_pixel(x+k1, y+k2 , color);
+                        }
                     }
-                )
-            );
+                }
+            }
             // Save the buffer
             let x = outfile.display().to_string();
             buffer.save(&x[..]).unwrap();
