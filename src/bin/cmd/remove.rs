@@ -1,12 +1,13 @@
 
 use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
-use super::Command;
+use super::{Command, datasink, datasource};
 use clap::{ArgMatches, Values};
 use famlib::{edit_msa::EditMSA, seqs::SequenceAccesors};
 
 pub struct Remove {}
 
+/// Remove Sequence command
 impl Remove {
     /// Remove Rows and columns from a MSA
     pub fn remove_command(
@@ -41,20 +42,14 @@ impl Remove {
             }
             input = msa.seq_col_owned();
         }
-        fo.write_fasta(input)
+        fo.write_fasta(&input)
     }
 }
 impl Command for Remove {
     fn run(&self, matches: &ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("remove") {
-            let input = match m.value_of("input") {
-                None => DataSource::stdin(),
-                Some(x) => DataSource::from(&x),
-            };
-            let sink = match m.value_of("output") {
-                None => DataSink::StdOut,
-                Some(x) => DataSink::FilePath(x.to_string()),
-            };
+            let input = datasource(m);
+            let sink = datasink(m);
             let val_to_vec = |x:Values| x.filter_map(|y|
                 y.parse::<usize>().ok())
                 .map(|x|x-1)

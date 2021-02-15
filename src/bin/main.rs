@@ -2,10 +2,7 @@ extern crate clap;
 mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
-use cmd::{
-    Command, collect::Collect, concat::Concat, dimension::Dimension,
-    gs::Gapstrip, join::Join, pop::Pop, remove::Remove, edit::Edit
-};
+use cmd::{Command, collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, gs::Gapstrip, join::Join, onepixel::OnePixel, pop::Pop, random::Random, remove::Remove};
 use std::io;
 
 pub fn main() -> io::Result<()> {
@@ -183,6 +180,76 @@ pub fn main() -> io::Result<()> {
                     .takes_value(true)
                     .help(".")))
             )
+        .subcommand(SubCommand::with_name("shuffle")
+            .about("Randomize MSA")
+            .subcommand(SubCommand::with_name("all")
+                .about("Shuffle content of rows")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file"))
+                .arg(Arg::with_name("fixed")
+                    .short("f")
+                    .long("fixed")
+                    .takes_value(false)
+                    .help("Keep gaps in a fixed position")))
+            .subcommand(SubCommand::with_name("rows")
+                .about("Shuffle row order")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")))
+            .subcommand(SubCommand::with_name("cols")
+                .about("Shuffle column order")
+                .arg(Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file"))
+                .arg(Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file"))))
+        .subcommand(SubCommand::with_name("plot")
+            .about("Create a simple plot of the MSA")
+            .arg(Arg::with_name("input")
+                .short("i")
+                .long("in")
+                .takes_value(true)
+                .help("The input file"))
+            .arg(Arg::with_name("output")
+                .short("o")
+                .long("out")
+                .required(true)
+                .takes_value(true)
+                .help("The output PNG file"))
+            .arg(Arg::with_name("is_protein")
+                .long("is_protein")
+                .takes_value(false)
+                .help("Use a protein color scheme [default]"))
+            .arg(Arg::with_name("is_nucleic")
+                .long("is_nucleic")
+                .takes_value(false)
+                .help("Use a nucleic acid color scheme")
+                .conflicts_with("is_protein"))
+            .arg(Arg::with_name("pixel_size")
+                .long("--pixel_size")
+                .takes_value(true)
+                .default_value("1")
+                .help("Keep gaps in a fixed position")))
         .get_matches();
 
     let commands: Vec<Box<dyn Command>>= vec![
@@ -193,7 +260,9 @@ pub fn main() -> io::Result<()> {
         Box::new(Join{}),
         Box::new(Concat{}),
         Box::new(Remove{}),
-        Box::new(Edit{})
+        Box::new(Edit{}),
+        Box::new(Random{}),
+        Box::new(OnePixel{})
     ];
     for cmd in commands {
         match cmd.run(&matches) {
