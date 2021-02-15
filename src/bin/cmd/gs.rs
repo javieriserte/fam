@@ -1,7 +1,7 @@
 
 use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
-use super::Command;
+use super::{Command, datasink, datasource};
 use clap::{ArgMatches};
 
 pub struct Gapstrip {}
@@ -20,20 +20,14 @@ impl Gapstrip {
             }
         };
         let msa = msa.gapstrip();
-        fo.write_fasta(msa)
+        fo.write_fasta(&msa)
     }
 }
 impl Command for Gapstrip {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
-            let input = match gsmatches.value_of("input") {
-                None => DataSource::stdin(),
-                Some(x) => DataSource::from(&x),
-            };
-            let output = match gsmatches.value_of("output") {
-                None => DataSink::StdOut,
-                Some(x) => DataSink::FilePath(String::from(x)),
-            };
+            let input = datasource(gsmatches);
+            let output = datasink(gsmatches);
             Self::gapstrip_command(input, output)?
         };
         Ok(())

@@ -59,11 +59,9 @@ pub fn sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
 }
 
 pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(
-    seqs: T1,
+    seqs: &T1,
     writer: T2,
 ) -> Result<(), io::Error> {
-    // let path = "hola.txt";
-    // let f = File::create(path).unwrap();
     let mut bw = BufWriter::new(writer);
     for annseq in seqs.iter() {
         bw.write_fmt(format_args!(">{}\n", annseq.id()))?;
