@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 - Versión 0.0.4-dev - 2021-02-15
 
+- [#22] - 2021-02-18 Hobohm1 Clustering
+
 ## New features
 
 - [#12] - 2021-02-11 Draw one pixel MSA plots

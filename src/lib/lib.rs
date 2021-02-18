@@ -5,6 +5,7 @@ pub mod merge;
 pub mod random;
 pub mod conservation;
 pub mod plotting;
+pub mod clustering;
 
 pub mod seqs {
     use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};
