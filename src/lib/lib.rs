@@ -2,9 +2,12 @@ pub mod edit;
 pub mod edit_msa;
 pub mod fastaio;
 pub mod merge;
+pub mod random;
+pub mod conservation;
+pub mod plotting;
 
 pub mod seqs {
-    use std::collections::HashMap;
+    use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -44,6 +47,14 @@ pub mod seqs {
                     write!(f, "Attempted to access an empty sequence")
                 }
             }
+        }
+    }
+    impl From<SeqError> for std::io::Error {
+        fn from(x: SeqError) -> Self {
+            return std::io::Error::new(
+                ErrorKind::Other,
+                format!("{}.\n", x)
+            )
         }
     }
 
@@ -263,11 +274,82 @@ pub mod seqs {
                 let ref_len = self.sequences[0].len();
                 if self.sequences.iter().all(|x| x.len() == ref_len) {
                     msa.seqs = self;
+                    msa.length = Some(ref_len);
                     Ok(msa)
                 } else {
                     Err(self)
                 }
             }
+        }
+    }
+
+    impl Display for SequenceCollection {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+/* Output Example
+         1         2         3         4         5         6         7         8
+.........0.........0.........0.........0.........0.........0.........0.........0
+> Seq1       ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ 50
+> Seq2       ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ            40
+> Seq3       ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ...DEFGHIJ 60
+...
+> Seq5       ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ...DEFGHIJ 60
+> Sequence6  ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ...DEFGHIJ 60
+> My_e...e_7 ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ABCDEFGHIJ ...DEFGHIJ 60
+*/
+            let col_width = 10;
+            let head = 3;
+            let max_printed_cols=5;
+            let printed_id_length=10;
+            let nseqs = self.size();
+            let mut widths = vec![];
+            let mut max_ncol = 0;
+            for i in 0..nseqs {
+                if i <head || i>=nseqs-3 {
+                    let c_len = self.get(i).map_or_else(||0, |x| x.len());
+                    let ncol = match c_len>0 {
+                        true => (c_len-1)/col_width+1,
+                        false => 0
+                    };
+                    widths.push((i, c_len, ncol));
+                    max_ncol = max(max_ncol, ncol);
+                }
+            }
+            max_ncol = min(max_ncol, max_printed_cols);
+            for (row, len, cols) in widths {
+                let s = self.get(row).unwrap();
+                let mut id = String::from(s.id());
+                if id.len()>printed_id_length {
+                    let header = (printed_id_length-2)/2;
+                    let tail = printed_id_length-header-3;
+                    id = format!(
+                        "{}...{}",
+                        &id[0..header],
+                        &id[id.len()-tail..id.len()]);
+                }
+                let mut seq = s.seq_as_string();
+                if cols > max_ncol {
+                    seq = format!(
+                        "{}...{}",
+                        &seq[0..(max_ncol-1)*col_width],
+                        &seq[seq.len()-(col_width-3)..seq.len()]);
+                } else {
+                    let mut sb = seq.chars().collect::<Vec<char>>();
+                    for _ in sb.len()..max_ncol*col_width {
+                        sb.push(' ');
+                    }
+                    seq = sb.into_iter().collect();
+                }
+                seq = seq.chars().enumerate().flat_map(
+                    |(i, x)| if i>0 && (i+1)%10==1 {
+                        vec![' ', x]
+                    } else {
+                        vec![x]
+                    }
+                ).collect();
+                writeln!(f, "> {:<w$} {} {}", id, seq, len, w=printed_id_length)?;
+                if row==2 && self.size()>6 {writeln!(f, "...")?;}
+            }
+            Ok(())
         }
     }
 
@@ -457,6 +539,8 @@ pub mod seqs {
             self.ids.contains_key(id)
         }
 
+        /// Remove row in Sequence collection.
+        /// args: index: 0-based index of the element to be removed.
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
             if self.ids.len() > 0 && index < self.size() {
                 let r = self.sequences.remove(index);
@@ -694,6 +778,12 @@ pub mod seqs {
                 None
             }
         }
+        pub fn seq_col(&self) -> &SequenceCollection {
+            &self.seqs
+        }
+        pub fn seq_col_owned(self) -> SequenceCollection {
+            self.seqs
+        }
     }
 
     impl SequenceAccesors for Alignment {
@@ -756,6 +846,12 @@ pub mod seqs {
             &mut self,
             order: std::vec::Vec<usize>) -> std::result::Result<(), SeqError> {
             self.seqs.reorder(order)
+        }
+    }
+
+    impl Display for Alignment {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            self.seqs.fmt(f)
         }
     }
 
@@ -861,6 +957,7 @@ pub mod seqs {
 #[cfg(test)]
 mod test{
     use crate::seqs::SequenceCollection;
+    use crate::seqs::Alignment;
     use crate::seqs::AnnotatedSequence;
     use crate::seqs::SequenceAccesors;
     use crate::seqs::SeqError;
@@ -887,6 +984,41 @@ mod test{
         sq.add(c)?;
         sq.add(d)?;
         Ok(sq)
+    }
+    fn sample_display_sc() -> SequenceCollection {
+        let mut sq = SequenceCollection::new();
+        for i in 0..10 {
+            let s = match i==0 {
+                true => String::from(""),
+                false => {
+                    (0..10*(i-1))
+                        .into_iter()
+                        .map(|_| 'A')
+                        .collect::<String>()
+                        + &String::from("AAAAABBBBB")
+                }
+            };
+            if i < 5 {
+                let ca = AnnotatedSequence::from_string(
+                    format!("Seq_{}", i), s);
+                sq.add(ca).unwrap();
+            }
+            else {
+                let ca = AnnotatedSequence::from_string(
+                    format!("Sequence_00{}", i), s);
+                sq.add(ca).unwrap();
+            }
+        }
+        sq
+    }
+    fn sample_display_msa() -> Alignment {
+        let mut sq = SequenceCollection::new();
+        for i in 0..10 {
+            let ca = AnnotatedSequence::from_string(
+                format!("Seq_{}", i), String::from("ATGKKKGTGCATTAA"));
+            sq.add(ca).unwrap();
+        }
+        sq.to_msa().ok().unwrap()
     }
     #[test]
     fn reorder_equal_order() {
@@ -963,5 +1095,34 @@ mod test{
         assert_eq!(msa.get(0).unwrap().seq_as_string(), "AAA");
         assert_eq!(msa.get(1).unwrap().seq_as_string(), "A");
         assert_eq!(msa.get(2).unwrap().seq_as_string(), "AA");
+    }
+
+    #[test]
+    fn test_display_seq_col() {
+        let expected = "\
+> Seq_0                                                             0
+> Seq_1      AAAAABBBBB                                             10
+> Seq_2      AAAAAAAAAA AAAAABBBBB                                  20
+...
+> Sequ...007 AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA ...AABBBBB 70
+> Sequ...008 AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA ...AABBBBB 80
+> Sequ...009 AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA ...AABBBBB 90
+";
+        let scol = sample_display_sc();
+        assert_eq!(format!("{}", scol), expected);
+    }
+    #[test]
+    fn test_display_msa() {
+        let expected = "\
+> Seq_0      ATGKKKGTGC ATTAA      15
+> Seq_1      ATGKKKGTGC ATTAA      15
+> Seq_2      ATGKKKGTGC ATTAA      15
+...
+> Seq_7      ATGKKKGTGC ATTAA      15
+> Seq_8      ATGKKKGTGC ATTAA      15
+> Seq_9      ATGKKKGTGC ATTAA      15
+";
+        let msa = sample_display_msa();
+        assert_eq!(format!("{}", msa), expected);
     }
 }

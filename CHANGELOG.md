@@ -2,21 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
-[#3] - 2020-12-04 Implemented some edit capabilities
-[#5] - 2020-09-10 Use HashMap in sequenceCollection
-[#6] - 2020-09-08 Added get_mut to sequenceCollection
-[#4] - 2020-09-08 Implement IntoIterator
-[#2] - 2020-09-07 Add Join and concat functions
-[#1] - 2020-09-07 Pop Reference
-
 ## Current Version
 
-- Versión 0.0.2-dev - 2020-06-14
+- Versión 0.0.4 - 2021-02-15
 
-### New features
+## New features
 
-- [dev] 2020-08-28 - Added Changelog
+- [#12] - 2021-02-11 Draw one pixel MSA plots
+- [#9] - 2021-02-09 Computes conservation using Shannon entropy
+- [#16] - 2021-02-08 Implement Display for Alinment and SequenceCollection
+- [#17] - 2021-02-05 Modify code to use datasink and datasource functions
+- [#15] - 2021-02-05 Change DataSource to Enum
+- [#10] - 2021-02-05 Shuffle MSA
+- [#13,#14] - 2021-02-05 Enhance DataSink and DataSource
+- [#11] - 2021-02-01 Added logo icon
 
 ## Previous Versions
 
 - Versión 0.0.1 - 2020-06-14 - First version
+- Versión 0.0.2 - 2020-06-14 - Added Changelog
+- Versión 0.0.3 - 2021-01-29 - Edit Sequences
