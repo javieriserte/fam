@@ -5,7 +5,7 @@ pub trait Conservation {
     fn dna_entropy(&self) -> Vec<f64>;
 }
 
-fn dna_index(c:char) -> usize {
+pub(crate) fn dna_index(c:char) -> usize {
     match c {
         'A' => 0,
         'C' => 1,
@@ -16,7 +16,7 @@ fn dna_index(c:char) -> usize {
     }
 }
 
-fn amino_index(c: char) -> usize {
+pub(crate) fn amino_index(c: char) -> usize {
     match c {
         'A' => 0,
         'C' => 1,

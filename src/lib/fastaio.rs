@@ -11,39 +11,36 @@ use std::path::Path;
 use std::io::{self};
 
 pub fn sequence_collection_from_bufread<T: BufRead>(
-    mut reader: T,
+  mut reader: T,
 ) -> Result<SequenceCollection, Error> {
-    let mut msa = SequenceCollection::new();
-    let mut current_sequence: Vec<String> = vec![];
-    let mut current_id: Option<String> = None;
-    loop {
-        let mut line = String::new();
-        let len = reader.read_line(&mut line)?;
-        if len == 0 || line.starts_with(">") {
-            match &current_id {
-                Some(id) => {
-                    msa.add(AnnotatedSequence::from_string(
-                        id.clone(),
-                        current_sequence.join(""),
-                    ))
-                    .unwrap();
-                }
-                None => (),
-            };
-            current_sequence.clear();
-            if line.starts_with(">") {
-                line.truncate(line.trim_end().len());
-                current_id = Some(line.split_off(1));
-            }
-        } else {
-            line.truncate(line.trim_end().len());
-            current_sequence.push(line);
-        }
-        if len == 0 {
-            break;
-        }
+  let mut msa = SequenceCollection::new();
+  let mut current_sequence: Vec<String> = vec![];
+  let mut current_id: Option<String> = None;
+  loop {
+    let mut line = String::new();
+    let len = reader.read_line(&mut line)?;
+    if len == 0 || line.starts_with(">") {
+      if let Some(id) = &current_id {
+        let ann_seq = AnnotatedSequence::from_string(
+          id.clone(),
+          current_sequence.join(""),
+        );
+        msa.add(ann_seq)?
+      };
+      current_sequence.clear();
+      if line.starts_with(">") {
+        line.truncate(line.trim_end().len());
+        current_id = Some(line.split_off(1));
+      }
+    } else {
+      line.truncate(line.trim_end().len());
+      current_sequence.push(line);
     }
-    Ok(msa)
+    if len == 0 {
+      break;
+    }
+  }
+  Ok(msa)
 }
 
 pub fn sequence_collection_from_file(
@@ -77,7 +74,7 @@ mod test {
     use crate::seqs::{SequenceAccesors, SequenceCollection};
     #[test]
     fn test_sequence_collection_from_bufread_when_ok() {
-        let input = ">S1\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
+        let input = ">S1\r\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
         let b = input.as_bytes();
         let msa = sequence_collection_from_bufread(b).unwrap();
         assert_eq!(msa.get(0).unwrap().id(), "S1");
