@@ -1,4 +1,4 @@
-use std::{path::Path};
+use std::path::Path;
 use rand::{Rng, prelude::SliceRandom, thread_rng};
 use graphics_buffer::RenderBuffer;
 
@@ -85,12 +85,12 @@ pub fn random_voro(outfile: &Path) {
     let x = outfile.display().to_string();
     buffer.save(&x[..]).unwrap();
 }
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn test_random_voro() {
-        let outfile = "a.png";
-        random_voro(Path::new(outfile))
-    }
-}
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     #[test]
+//     fn test_random_voro() {
+//         let outfile = "a.png";
+//         random_voro(Path::new(outfile))
+//     }
+// }

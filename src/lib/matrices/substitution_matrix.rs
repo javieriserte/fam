@@ -1,77 +1,124 @@
-use std::{error::Error, io::ErrorKind};
-use crate::seqs::Alignment;
-use crate::conservation::amino_index;
+
+use std::error::Error;
+
 use itertools::Itertools;
 
-pub trait SubstitutionMatrix {
+use crate::conservation::amino_index;
+use crate::conservation::dna_index;
+use crate::matrices::triangular_matrix::TriangularMatrix;
+use crate::matrices::triangular_matrix::Num;
+use crate::seqs::Alignment;
+
+pub trait SubstitutionMatrix<T> where T: Num
+{
+    type Output;
     fn build_from(&mut self, msa: &Alignment) -> Result<(), Box<dyn Error>>;
+    fn get(&self, x:usize, y:usize) -> Result<T, Box<dyn Error>>;
+    fn set(&mut self, x:usize, y:usize, value: T) -> Result<(), Box<dyn Error>>;
+    fn normalize(&self) -> Result<Self::Output, Box<dyn Error>>;
 }
-pub struct ProteinMatrix {
-    pub data: [usize; Self::SIZE],
+
+pub struct ProteinMatrix<T> where T: Num
+{
+    pub data: TriangularMatrix<T>
 }
-impl ProteinMatrix {
+
+impl <T>ProteinMatrix<T> where T: Num
+{
     const ALPHABET_SIZE: usize = 20;
-    const SIZE:usize = Self::ALPHABET_SIZE * (Self::ALPHABET_SIZE +1)/2;
     pub fn new() -> Self {
         Self{
-            data: [0; 210]
-        }
-    }
-    pub fn set(
-            &mut self,
-            x: usize,
-            y: usize,
-            value: usize)
-            -> Result<(), Box<dyn Error>> {
-        let pos = ProteinMatrix::_from_xy(x, y)?;
-        self.data[pos] = value;
-        Ok(())
-    }
-    pub fn get(&self, x:usize, y:usize) -> Result<usize, Box<dyn Error>> {
-        let pos = ProteinMatrix::_from_xy(x, y)?;
-        Ok(self.data[pos])
-    }
-    pub fn _from_xy(x: usize, y: usize) -> Result<usize, Box<dyn Error>> {
-        let pos = match y>=x {
-            true => x*(x+1)/2+y,
-            false => y*(y+1)/2+x
-        };
-        if pos < Self::SIZE &&
-            x < Self::ALPHABET_SIZE &&
-            y < Self::ALPHABET_SIZE {
-            Ok(pos)
-        } else {
-            Err(
-                Box::new(
-                    std::io::Error::new(
-                        ErrorKind::Other,
-                        format!("Index out of range")
-                    )
-                )
-            )
+            data: TriangularMatrix::new(Self::ALPHABET_SIZE)
         }
     }
 }
-impl SubstitutionMatrix for ProteinMatrix {
+
+impl <T>SubstitutionMatrix<T> for ProteinMatrix<T>
+where T: Num
+{
+    type Output = ProteinMatrix<f64>;
     fn build_from(&mut self, msa: &Alignment) -> Result<(), Box<dyn Error>> {
-        let mut data = [0; Self::SIZE];
+        let mut data = TriangularMatrix::new(Self::ALPHABET_SIZE);
         for col in msa.columns() {
             for pair in col.iter().combinations(2) {
-                println!("{:?}", pair);
                 let c1 = *pair[0];
                 let c2 = *pair[1];
                 let x = amino_index(*c1);
                 let y = amino_index(*c2);
-                match Self::_from_xy(x, y) {
-                    Ok(pos) => data[pos] += 1,
-                    Err(_) => {}
-                }
+                data.increment(x, y).ok();
             }
         }
         self.data = data;
         Ok(())
     }
+    fn set(
+        &mut self,
+        x: usize,
+        y: usize,
+        value: T)
+    -> Result<(), Box<dyn Error>> {
+        self.data.set(x, y, value)?;
+        Ok(())
+    }
+    fn get(&self, x:usize, y:usize) -> Result<T, Box<dyn Error>> {
+        self.data.get(x, y)
+    }
+    fn normalize(&self) -> Result<Self::Output, Box<dyn Error>> {
+        let data = TriangularMatrix::new(Self::ALPHABET_SIZE);
+        let mut pm = ProteinMatrix::new();
+        pm.data = data;
+        Ok(pm)
+    }
 }
+
+pub struct DNAMatrix<T>
+where T: Num {
+    data: TriangularMatrix<T>
+}
+
+impl <T> DNAMatrix<T> where T:Num {
+    const ALPHABET_SIZE: usize = 20;
+    pub fn new() -> Self {
+        Self{
+            data: TriangularMatrix::new(Self::ALPHABET_SIZE)
+        }
+    }
+}
+impl <T> SubstitutionMatrix<T> for DNAMatrix<T> where T:Num {
+    type Output = DNAMatrix<f64>;
+    fn build_from(&mut self, msa: &Alignment) -> Result<(), Box<dyn Error>> {
+        let mut data = TriangularMatrix::new(Self::ALPHABET_SIZE);
+        for col in msa.columns() {
+            for pair in col.iter().combinations(2) {
+                let c1 = *pair[0];
+                let c2 = *pair[1];
+                let x = dna_index(*c1);
+                let y = dna_index(*c2);
+                data.increment(x, y)?;
+            }
+        }
+        self.data = data;
+        Ok(())
+    }
+    fn set(
+        &mut self,
+        x: usize,
+        y: usize,
+        value: T
+    )
+    -> Result<(), Box<dyn Error>> {
+        self.data.set(x, y, value)?;
+        Ok(())
+    }
+    fn get(&self, x:usize, y:usize) -> Result<T, Box<dyn Error>> {
+        self.data.get(x, y)
+    }
+
+    fn normalize(&self) -> Result<Self::Output, Box<dyn Error>> {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::seqs::{Alignment, AnnotatedSequence, SequenceAccesors};
@@ -92,7 +139,7 @@ mod test {
         let seqs = vec!["Q", "Q", "Q", "Q"];
         let msa = build_msa(seqs);
         pm.build_from(&msa).unwrap();
-        assert_eq!(pm.get(13, 13).ok(), Some(6));
+        assert_eq!(pm.get(13, 13).ok(), Some(6.0));
     }
     #[test]
     fn test_protmatrix_with_one_column_one_diff() {

@@ -7,7 +7,7 @@ pub mod conservation;
 pub mod plotting;
 pub mod clustering;
 pub mod random_voronoi;
-pub mod substitution_matrix;
+pub mod matrices;
 
 pub mod seqs {
     use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};
