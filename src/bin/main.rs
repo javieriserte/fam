@@ -2,7 +2,20 @@ extern crate clap;
 mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
-use cmd::{Command, collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, gs::Gapstrip, join::Join, onepixel::OnePixel, pop::Pop, random::Random, remove::Remove};
+use cmd::{
+  Command,
+  collect::Collect,
+  concat::Concat,
+  dimension::Dimension,
+  edit::Edit,
+  gs::Gapstrip,
+  join::Join,
+  onepixel::OnePixel,
+  pop::Pop,
+  random::Random,
+  remove::Remove,
+  filter::Filter
+};
 use std::io;
 
 pub fn main() -> io::Result<()> {
@@ -250,6 +263,41 @@ pub fn main() -> io::Result<()> {
                 .takes_value(true)
                 .default_value("1")
                 .help("Keep gaps in a fixed position")))
+        .subcommand(
+            SubCommand::with_name("filter")
+                .about("filter sequence matching a regex to the sequence id.")
+                .arg(
+                    Arg::with_name("input")
+                        .short("i")
+                        .long("in")
+                        .takes_value(true)
+                        .help("The input file")
+                )
+                .arg(
+                    Arg::with_name("output")
+                        .short("o")
+                        .long("out")
+                        .takes_value(true)
+                        .help("The output file")
+                )
+                .arg(
+                    Arg::with_name("ignore_case")
+                        .short("c")
+                        .long("ignore-case")
+                        .takes_value(false)
+                        .help("The search is case insensitive")
+                )
+                .arg(
+                    Arg::with_name("pattern")
+                        .short("p")
+                        .long("pattern")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The search pattern to match")
+                    
+                )
+            
+        )    
         .get_matches();
 
     let commands: Vec<Box<dyn Command>>= vec![
@@ -262,13 +310,24 @@ pub fn main() -> io::Result<()> {
         Box::new(Remove{}),
         Box::new(Edit{}),
         Box::new(Random{}),
-        Box::new(OnePixel{})
+        Box::new(OnePixel{}),
+        Box::new(Filter{})
     ];
-    for cmd in commands {
-        match cmd.run(&matches) {
-            Ok(_) => {}
-            Err(x) => {println!("Error: {}", x)}
-        }
+    let is_there_any_command = commands
+        .iter()
+        .any(|cmd| cmd.works_with(&matches));
+    match is_there_any_command {
+        true => {
+            for cmd in commands {
+                match cmd.run(&matches) {
+                    Ok(_) => {}
+                    Err(x) => {println!("Error: {}", x)}
+                }
+            }
+        },
+        false => {
+            println!("{}", matches.usage())
+        },
     }
     Ok(())
 }

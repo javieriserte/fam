@@ -8,6 +8,7 @@ pub mod plotting;
 pub mod clustering;
 pub mod random_voronoi;
 pub mod matrices;
+pub mod filter;
 
 pub mod seqs {
     use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};

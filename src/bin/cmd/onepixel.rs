@@ -1,6 +1,6 @@
 use std::{io::{self, ErrorKind}, path::Path};
 use famlib::plotting::OnePixelMsaPlotter;
-use crate::data::{DataSource};
+use crate::data::DataSource;
 use super::{Command, datasource};
 
 pub struct OnePixel{}
@@ -63,6 +63,12 @@ impl Command for OnePixel {
             )?
         };
         Ok(())
+    }
+
+    fn works_with(&self, matches: &clap::ArgMatches) -> bool {
+        matches
+            .subcommand_matches("plot")
+            .is_some()
     }
 }
 

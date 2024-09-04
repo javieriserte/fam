@@ -1,8 +1,8 @@
 
 use std::io::{self};
-use crate::data::{DataSink};
+use crate::data::DataSink;
 use super::Command;
-use clap::{ArgMatches};
+use clap::ArgMatches;
 use famlib::fastaio::sequence_collection_from_stdin;
 
 pub struct Collect {}
@@ -20,6 +20,12 @@ impl Command for Collect {
             return Collect::collect_command(ds);
         };
         Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+          .subcommand_matches("collect")
+          .is_some()
     }
 }
 

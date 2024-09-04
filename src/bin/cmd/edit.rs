@@ -174,5 +174,11 @@ impl Command for Edit {
         }
         Ok(())
     }
+
+    fn works_with(&self, matches: &clap::ArgMatches) -> bool {
+        matches
+            .subcommand_matches("edit")
+            .is_some()
+    }
 }
 

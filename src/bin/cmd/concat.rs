@@ -2,8 +2,8 @@
 use std::io::{self};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink};
-use clap::{ArgMatches};
-use famlib::merge::{concat};
+use clap::ArgMatches;
+use famlib::merge::concat;
 
 pub struct Concat {}
 
@@ -30,5 +30,11 @@ impl Command for Concat {
             return Self::concat_command(files, sink);
         }
         Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("concat")
+            .is_some()
     }
 }

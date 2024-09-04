@@ -8,9 +8,9 @@ use std::{error::Error, io::ErrorKind};
 ///
 /// # Examples
 /// ```
-/// use fam::matrices::triangular_matrix::One;
+/// use crate::famlib::matrices::One;
 /// let one = usize::one();
-/// assert_eq!(one, 1);
+/// assert_eq!(one, 1 as usize);
 /// ```
 pub trait One { fn one() -> Self ;}
 impl One for usize { fn one() -> Self { 1 as usize } }

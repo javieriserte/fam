@@ -1,9 +1,9 @@
 
 use std::io::{self, BufWriter, Write, stdout};
-use crate::data::{DataSource};
+use crate::data::DataSource;
 use super::{Command, datasource};
 use famlib::seqs::SequenceAccesors;
-use clap::{ArgMatches};
+use clap::ArgMatches;
 
 pub struct Dimension {}
 
@@ -45,5 +45,11 @@ impl Command for Dimension {
             return Dimension::dimension_command(input, expanded);
         };
     Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("dimensions")
+            .is_some()
     }
 }
