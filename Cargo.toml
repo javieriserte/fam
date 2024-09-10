@@ -26,5 +26,9 @@ test = false
 doc = false
 
 [profile.release]
-lto = true
+lto = "fat"
+debug = false
 panic = 'abort'
+strip = true
+codegen-units = 1
+

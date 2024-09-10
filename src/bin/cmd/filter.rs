@@ -11,17 +11,11 @@ impl Filter {
         input: DataSource,
         output: DataSink,
         ignore_case:bool,
+        keep: bool,
         pattern: &str
     ) -> io::Result<()> {
         let input = input.get_sequence_collection().unwrap();
-        let result = match ignore_case {
-            true => {
-                input.filter_regex_id_ignore_case(pattern)
-            },
-            false => {
-                input.filter_regex_id(pattern)
-            }
-        };
+        let result = input.filter_regex_id(pattern, ignore_case, keep);
         output
             .write_fasta(&result)
             .map_err(Into::into)
@@ -33,12 +27,14 @@ impl Command for Filter {
         if let Some(m) = matches.subcommand_matches("filter") {
             let input = datasource(m);
             let output = datasink(m);
-            let case_insentitive = m.is_present("ignore-case");
+            let case_insentitive = m.is_present("ignore_case");
+            let keep = !m.is_present("exclude");
             let pattern = m.value_of("pattern").unwrap();
             Self::filter(
                 input,
                 output,
                 case_insentitive,
+                keep,
                 pattern
             )?
         };

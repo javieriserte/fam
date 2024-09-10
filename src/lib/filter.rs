@@ -1,53 +1,32 @@
 use crate::seqs::Alignment;
 use crate::seqs::SequenceAccesors;
 use crate::seqs::SequenceCollection;
-use regex::Regex;
 use regex::RegexBuilder;
 
-// i have this code in rust, 
-//  but it does not work, because Self cannot be known at compile time.
-//  How i can solve this problem
-
 pub trait Filter<T> {
-  fn filter_regex_id(
-    &self,
-    regex: &str
- ) -> T;
-  fn filter_regex_id_ignore_case(
-    &self,
-    regex: &str
+    fn filter_regex_id(
+        &self,
+        regex: &str,
+        ignore_case: bool,
+        keep: bool
  ) -> T;
 }
 
 impl Filter<SequenceCollection> for SequenceCollection {
     fn filter_regex_id(
         &self,
-        regex: &str
-     ) -> SequenceCollection {
-        let re = Regex::new(regex).unwrap();
-        let mut result = SequenceCollection::new();
-        self.iter()
-            .for_each(
-                |x| match re.is_match(x.id()) {
-                    true => result.add(x.clone()).unwrap(),
-                    false => ()
-                }
-            );
-        return result
-    }
-
-    fn filter_regex_id_ignore_case(
-        &self,
-        regex: &str
-     ) -> SequenceCollection {
+        regex: &str,
+        ignore_case: bool,
+        keep: bool
+    ) -> SequenceCollection {
         let re = RegexBuilder::new(regex)
-            .case_insensitive(true)
+            .case_insensitive(ignore_case)
             .build()
             .unwrap();
         let mut result = SequenceCollection::new();
         self.iter()
             .for_each(
-                |x| match re.is_match(x.id()) {
+                |x| match re.is_match(x.id()) ^ !keep {
                     true => result.add(x.clone()).unwrap(),
                     false => ()
                 }
@@ -59,37 +38,15 @@ impl Filter<SequenceCollection> for SequenceCollection {
 impl Filter<Alignment> for Alignment {
     fn filter_regex_id(
         &self,
-        regex: &str
+        regex: &str,
+        ignore_case: bool,
+        keep: bool
      ) -> Alignment {
-        let re = Regex::new(regex).unwrap();
-        let mut result = Alignment::new();
-        self.iter()
-            .for_each(
-                |x| match re.is_match(x.id()) {
-                    true => result.add(x.clone()).unwrap(),
-                    false => ()
-                }
-            );
-        return result
-    }
-
-    fn filter_regex_id_ignore_case(
-        &self,
-        regex: &str
-     ) -> Alignment {
-        let re = RegexBuilder::new(regex)
-            .case_insensitive(true)
-            .build()
-            .unwrap();
-        let mut result = Alignment::new();
-        self.iter()
-            .for_each(
-                |x| match re.is_match(x.id()) {
-                    true => result.add(x.clone()).unwrap(),
-                    false => ()
-                }
-            );
-        return result
+        self
+            .seq_col()
+            .filter_regex_id(regex, ignore_case, keep)
+            .to_msa()
+            .expect("This shouldn't fail, comes and go from and Alignment.")
     }
 }
 
@@ -122,7 +79,7 @@ mod test {
                 "ACTATCGTCA".to_string()
             )
         ).unwrap();
-        let result = sq.filter_regex_id("sequence");
+        let result = sq.filter_regex_id("sequence", false, true);
         assert!(result.size() == 2);
         assert!(result.iter().all(|x| x.id().starts_with("seq")))
     }
@@ -147,7 +104,31 @@ mod test {
                 "ACTATCGTCA".to_string()
             )
         ).unwrap();
-        let result = sq.filter_regex_id_ignore_case("sequence");
+        let result = sq.filter_regex_id("sequence", true, true);
         assert!(result.size() == 2);
+    }
+    #[test]
+    fn test_filter_seqcol_case_insentitive_exclude() {
+        let mut sq = SequenceCollection::new();
+        sq.add(
+            AnnotatedSequence::from_string(
+                "sEquence_01".to_string(),
+                "ACTATCGTCA".to_string()
+            )
+        ).unwrap();
+        sq.add(
+            AnnotatedSequence::from_string(
+                "Cequence_02".to_string(),
+                "ACTATCGTCA".to_string()
+            )
+        ).unwrap();
+        sq.add(
+            AnnotatedSequence::from_string(
+                "Sequence_03".to_string(),
+                "ACTATCGTCA".to_string()
+            )
+        ).unwrap();
+        let result = sq.filter_regex_id("sequence", true, false);
+        assert!(result.size() == 1);
     }
 }

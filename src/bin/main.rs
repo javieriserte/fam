@@ -288,6 +288,16 @@ pub fn main() -> io::Result<()> {
                         .help("The search is case insensitive")
                 )
                 .arg(
+                    Arg::with_name("exclude")
+                        .short("e")
+                        .long("exclude")
+                        .takes_value(false)
+                        .help(
+                          "Reverse the result of the search, \
+                          excluding those that matches the pattern."
+                        )
+                )
+                .arg(
                     Arg::with_name("pattern")
                         .short("p")
                         .long("pattern")
