@@ -11,7 +11,7 @@ pub mod matrices;
 pub mod filter;
 
 pub mod seqs {
-    use std::{cmp::{max, min}, collections::HashMap, io::ErrorKind};
+    use std::{cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
 
@@ -659,6 +659,85 @@ pub mod seqs {
         fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
             self.sequences.into_iter()
             // SequenceCollectionIntoiter{data:self}
+        }
+    }
+
+
+    pub struct BufferedSeqCollection<'a> {
+        buffer: Option<&'a mut dyn BufRead>,
+        current_seq: Vec<String>,
+        current_id: Option<String>,
+        consumed:bool,
+        source_seq: Option<&'a BufferedSeqCollection<'a>>,
+        mod_func: Option<Box<dyn FnMut(&mut BufferedSeqCollection<'a>) -> Option<AnnotatedSequence>>>
+    }
+
+    impl<'a> BufferedSeqCollection<'a> {
+        pub fn new(buffer: &'a mut dyn BufRead) -> Self {
+            BufferedSeqCollection{
+                buffer: Some(buffer),
+                current_seq: vec![],
+                current_id: None,
+                consumed: false,
+                source_seq: None,
+                mod_func: None
+            }
+        }
+        pub fn from_modification(
+            buffer: &'a mut BufferedSeqCollection<'a>,
+            mod_func: impl FnMut(&mut BufferedSeqCollection<'a>) -> Option<AnnotatedSequence> + 'static
+        ) -> Self {
+            BufferedSeqCollection{
+                buffer: None,
+                current_seq: vec![],
+                current_id: None,
+                consumed: false,
+                source_seq: Some(buffer),
+                mod_func: Some(Box::new(mod_func))
+            }
+        }
+        pub fn next_sequence(&mut self) -> Option<AnnotatedSequence> {
+            if self.consumed {
+                return None;
+            }
+            if self.buffer.is_some() {
+                loop {
+                    let mut line = String::new();
+                    let mut returning: Option<AnnotatedSequence> = None;
+                    let len = self.buffer.unwrap().read_line(&mut line).unwrap();
+                    if len == 0 || line.starts_with(">") {
+                    if let Some(id) = &self.current_id {
+                        let ann_seq = AnnotatedSequence::from_string(
+                            id.clone(),
+                            (&self.current_seq).join(""),
+                        );
+                        if len == 0 {
+                            self.consumed = true;
+                        };
+                        returning = Some(ann_seq);
+                    };
+                    self.current_seq.clear();
+                    if line.starts_with(">") {
+                        line.truncate(line.trim_end().len());
+                        self.current_id = Some(line.split_off(1));
+                    }
+                    } else {
+                        line.truncate(line.trim_end().len());
+                        self.current_seq.push(line);
+                    }
+                    if returning.is_some() {
+                        return returning;
+                    }
+                }
+            }
+            if self.source_seq.is_some() {
+                if let Some(f) = &mut self.mod_func {
+                    return f(self.source_seq.unwrap());
+                } else {
+                    return None;
+                }
+            }
+            return None
         }
     }
 

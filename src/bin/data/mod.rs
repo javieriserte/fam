@@ -19,6 +19,12 @@ pub enum DataSource {
 }
 
 impl DataSource {
+    pub fn get_buffered_sequence_collection(&self) -> Option<SequenceCollection> {
+        match self {
+            DataSource::StdIn => buffered_sequence_collection_from_stdin().ok(),
+            DataSource::FilePath(file) => sequence_collection_from_file()
+            }
+        }
     pub fn get_sequence_collection(&self) -> Option<SequenceCollection> {
         match self {
             DataSource::StdIn => sequence_collection_from_stdin().ok(),
