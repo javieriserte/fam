@@ -262,7 +262,7 @@ pub mod seqs {
         }
     }
 
-    #[derive(Clone, PartialEq, Eq)]
+    #[derive(Clone, PartialEq, Eq, Debug)]
     pub struct SequenceCollection {
         sequences: Vec<AnnotatedSequence>,
         ids: HashMap<String, usize>, // Maps id to index in sequences vector
