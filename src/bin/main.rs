@@ -502,12 +502,23 @@ pub fn main() -> io::Result<()> {
         Box::new(Join{}),
         Box::new(Edit{}),
         Box::new(Pop{}),
+        Box::new(Filter{}),
     ];
-    for cmd in commands {
-        match cmd.run(&matches) {
-            Ok(_) => {}
-            Err(x) => {println!("Error: {}", x)}
-        }
+    let is_there_any_command = commands
+        .iter()
+        .any(|cmd| cmd.works_with(&matches));
+    match is_there_any_command {
+        true => {
+            for cmd in commands {
+                match cmd.run(&matches) {
+                    Ok(_) => {}
+                    Err(x) => {println!("Error: {}", x)}
+                }
+            }
+        },
+        false => {
+            println!("{}", matches.usage())
+        },
     }
     Ok(())
 }
