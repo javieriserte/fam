@@ -2,7 +2,7 @@
 use std::io::{self};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink};
-use clap::{ArgMatches};
+use clap::ArgMatches;
 use famlib::merge::join;
 
 pub struct Join {}
@@ -31,5 +31,11 @@ impl Command for Join {
             return Join::join_command(files, sink);
         }
         Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("join")
+            .is_some()
     }
 }

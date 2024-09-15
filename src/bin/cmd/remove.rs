@@ -66,5 +66,11 @@ impl Command for Remove {
         }
         Ok(())
     }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("remove")
+            .is_some()
+    }
 }
 

@@ -2,7 +2,7 @@
 use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
-use clap::{ArgMatches};
+use clap::ArgMatches;
 
 pub struct Gapstrip {}
 
@@ -31,5 +31,11 @@ impl Command for Gapstrip {
             Self::gapstrip_command(input, output)?
         };
         Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("gapstrip")
+            .is_some()
     }
 }

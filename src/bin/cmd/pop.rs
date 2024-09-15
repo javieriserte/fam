@@ -31,5 +31,11 @@ impl Command for Pop {
         };
         Ok(())
     }
+
+    fn works_with(&self, matches: &clap::ArgMatches) -> bool {
+        matches
+            .subcommand_matches("pop")
+            .is_some()
+    }
 }
 

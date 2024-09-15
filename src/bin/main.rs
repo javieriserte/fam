@@ -13,7 +13,8 @@ use cmd::{
     onepixel::OnePixel,
     pop::Pop,
     random::Random,
-    remove::Remove
+    remove::Remove,
+    filter::Filter
 };
 use std::io;
 
@@ -428,6 +429,42 @@ fn app_plot_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
+fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("filter")
+            .about("filter sequence matching a regex to the sequence id.")
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+            )
+            .arg(
+                Arg::with_name("ignore_case")
+                    .short("c")
+                    .long("ignore-case")
+                    .takes_value(false)
+                    .help("The search is case insensitive")
+            )
+            .arg(
+                Arg::with_name("pattern")
+                    .short("p")
+                    .long("pattern")
+                    .takes_value(true)
+                    .required(true)
+                    .help("The search pattern to match")
+            )
+    );
+    return app;
+}
 
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
@@ -447,6 +484,7 @@ fn create_app() -> App<'static, 'static> {
     app = add_delete_subcommand(app);
     app = add_shuffle_subcommand(app);
     app = app_plot_subcommand(app);
+    app = add_filter_subcommand(app);
     return app;
 }
 

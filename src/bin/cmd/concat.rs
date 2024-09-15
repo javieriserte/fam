@@ -1,9 +1,8 @@
-
 use std::io::{self};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink};
-use clap::{ArgMatches};
-use famlib::merge::{concat};
+use clap::ArgMatches;
+use famlib::merge::concat;
 
 pub struct Concat {}
 
@@ -25,10 +24,16 @@ impl Command for Concat {
         if let Some(m) = matches.subcommand_matches("concat") {
             let inputs = m.values_of("input").unwrap();
             let files: Vec<DataSource> =
-            inputs.map(DataSource::from).collect();
+            inputs.map(|x| DataSource::from(x)).collect();
             let sink = datasink(m);
             return Self::concat_command(files, sink);
         }
         Ok(())
+    }
+
+    fn works_with(&self, matches: &ArgMatches) -> bool {
+        matches
+            .subcommand_matches("concat")
+            .is_some()
     }
 }

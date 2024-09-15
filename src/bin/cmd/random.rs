@@ -1,5 +1,5 @@
 use std::io::{self, ErrorKind};
-use famlib::{random::RandomGen};
+use famlib::random::RandomGen;
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 
@@ -85,6 +85,12 @@ impl Command for Random {
             };
         }
         Ok(())
+    }
+
+    fn works_with(&self, matches: &clap::ArgMatches) -> bool {
+        matches
+            .subcommand_matches("shuffle")
+            .is_some()
     }
 }
 

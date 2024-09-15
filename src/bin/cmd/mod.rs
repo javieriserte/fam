@@ -12,10 +12,12 @@ pub mod remove;
 pub mod edit;
 pub mod random;
 pub mod onepixel;
+pub mod filter;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {
     fn run(&self, matches: &ArgMatches) ->  io::Result<()>;
+    fn works_with(&self, matches: &ArgMatches) -> bool;
 }
 
 /// Creates a DataSink struct from the commandline arguments
@@ -30,6 +32,6 @@ pub fn datasink(matches: &ArgMatches) -> DataSink {
 fn datasource(matches: &ArgMatches) -> DataSource {
     match matches.value_of("input") {
         None => DataSource::StdIn,
-        Some(x) => DataSource::from(x),
+        Some(x) => DataSource::from(&x),
     }
 }
