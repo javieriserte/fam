@@ -88,9 +88,12 @@ impl Edit {
             let row_idx = at[0]-1+x;
             input
                 .get_mut(row_idx)
-                .ok_or(std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("Row index out of bounds: {}.", row_idx)))?
+                .ok_or_else(
+                    || std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Row index out of bounds: {}.", row_idx)
+                    )
+                )?
                 .edit_delete(col_idx, width)?;
         };
         fo.write_fasta(&input)
@@ -108,10 +111,12 @@ impl Command for Edit {
                     .map(|x| x.parse::<usize>().ok())
                     .collect::<Vec<Option<usize>>>();
                 if at.iter().any(|x| x.is_none()) || at.len() != 2 {
-                    return Err(std::io::Error::new(
-                        ErrorKind::Other,
-                        format!("Can not parse X, Y edit positions.",),
-                    ))
+                    return Err(
+                        std::io::Error::new(
+                            ErrorKind::Other,
+                            "Can not parse X, Y edit positions.".to_string(),
+                        )
+                    )
                 }
                 let at = at
                     .iter()
@@ -133,7 +138,7 @@ impl Command for Edit {
                 if at.iter().any(|x| x.is_none()) || at.len() != 2 {
                     return Err(std::io::Error::new(
                         ErrorKind::Other,
-                        format!("Can not parse X, Y edit positions.",),
+                        "Can not parse X, Y edit positions.".to_string(),
                     ))
                 }
                 let at = at
@@ -156,7 +161,7 @@ impl Command for Edit {
                 if at.iter().any(|x| x.is_none()) || at.len() != 2 {
                     return Err(std::io::Error::new(
                         ErrorKind::Other,
-                        format!("Can not parse X, Y edit positions.",),
+                        "Can not parse X, Y edit positions.".to_string(),
                     ))
                 }
                 let at = at
@@ -164,9 +169,12 @@ impl Command for Edit {
                     .take(2)
                     .map(|x| x.unwrap())
                     .collect::<Vec<usize>>();
-                let err_gen = |_| Err(std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("Can not parse Width or Height.")));
+                let err_gen = |_| Err(
+                    std::io::Error::new(
+                        ErrorKind::Other,
+                        "Can not parse Width or Height.".to_string()
+                    )
+                );
                 let width = m1.value_of("width").unwrap().parse::<usize>().or_else(err_gen)?;
                 let height = m1.value_of("height").unwrap().parse::<usize>().or_else(err_gen)?;
                 Self::edit_delete(input, output, at, width, height)?

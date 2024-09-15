@@ -16,7 +16,9 @@ impl Remove {
             rows: Vec<usize>,
             columns: Vec<usize>)
             -> io::Result<()> {
-        let mut input = fs.get_sequence_collection().unwrap();
+        let mut input = fs
+            .get_sequence_collection()
+            .unwrap();
         for i in rows {
             input.remove(i);
         }
@@ -56,10 +58,10 @@ impl Command for Remove {
                 .collect::<Vec<_>>();
             let rows = m
                 .values_of("rows")
-                .map_or_else(|| vec![], |x| val_to_vec(x));
+                .map_or_else( Vec::new, |x| val_to_vec(x));
             let cols = m
                 .values_of("cols")
-                .map_or_else(|| vec![], |x| val_to_vec(x));
+                .map_or_else(Vec::new, |x| val_to_vec(x));
             Self::remove_command(input, sink, rows, cols)?
         }
         Ok(())

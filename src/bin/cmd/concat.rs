@@ -25,7 +25,7 @@ impl Command for Concat {
         if let Some(m) = matches.subcommand_matches("concat") {
             let inputs = m.values_of("input").unwrap();
             let files: Vec<DataSource> =
-            inputs.map(|x| DataSource::from(x)).collect();
+            inputs.map(DataSource::from).collect();
             let sink = datasink(m);
             return Self::concat_command(files, sink);
         }
