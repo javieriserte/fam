@@ -23,12 +23,13 @@ impl RandomGen for Alignment {
                     let slice: &mut [char] = &mut chars;
                     slice.shuffle(&mut rng);
                     let mut j=0;
-                    for i in 0..seq.len() {
-                        if seq[i] != '-' {
-                            seq[i] = slice[j];
-                            j+=1;
+                    for s in seq {
+                        if *s != '-' {
+                            *s = slice[j];
+                            j += 1;
                         }
                     }
+
                 }
             },
             false=> {
@@ -44,8 +45,8 @@ impl RandomGen for Alignment {
     fn shuffle_rows(&mut self) {
         let mut rng = thread_rng();
         let mut rowdata = vec![];
-        for i in 0..self.size() {
-            rowdata.push(self.seqs.remove(i).unwrap());
+        for _ in 0..self.size() {
+            rowdata.push(self.seqs.remove(0).unwrap());
         }
         let slice: &mut [_] = &mut rowdata;
         slice.shuffle(&mut rng);

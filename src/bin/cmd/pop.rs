@@ -12,7 +12,7 @@ impl Pop {
         match seqs {
             Ok(_) => fo.write_fasta(&input),
             Err(x) => {
-                return Err(std::io::Error::new(
+                Err(std::io::Error::new(
                     ErrorKind::Other,
                     format!("Could not pop reference {}.\n", x),
                 ))

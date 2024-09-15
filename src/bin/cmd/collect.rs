@@ -24,8 +24,8 @@ impl Command for Collect {
 
     fn works_with(&self, matches: &ArgMatches) -> bool {
         matches
-          .subcommand_matches("collect")
-          .is_some()
+            .subcommand_matches("collect")
+            .is_some()
     }
 }
 

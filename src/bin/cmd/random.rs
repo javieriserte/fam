@@ -15,11 +15,14 @@ impl Random {
                 fo.write_fasta(&msa)
             }
             Err(_) => {
-                Err(std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("A MSA is required.\n")))
-                }
+                Err(
+                    std::io::Error::new(
+                        ErrorKind::Other,
+                        "A MSA is required.\n".to_string()
+                    )
+                )
             }
+        }
     }
     pub fn shuffle_rows_command(fs: DataSource, fo: DataSink)
             -> io::Result<()> {
@@ -37,12 +40,14 @@ impl Random {
         }
 
     }
-    pub fn shuffle_cols_command(fs: DataSource, fo: DataSink)
-            -> io::Result<()> {
+    pub fn shuffle_cols_command(
+        fs: DataSource,
+        fo: DataSink
+    ) -> io::Result<()> {
         let msa = fs.get_sequence_collection().unwrap().to_msa();
         match msa {
             Ok(mut msa) => {
-                msa.shuffle_rows();
+                msa.shuffle_cols();
                 fo.write_fasta(&msa)
             }
             Err(_) => {
@@ -66,15 +71,15 @@ impl Command for Random {
                         datasink(m),
                         fixed)?
                 },
-                ("rows", _) => {
+                ("rows", sm) => {
                     Self::shuffle_rows_command(
-                        datasource(m),
-                        datasink(m))?
+                        datasource(sm.unwrap()),
+                        datasink(sm.unwrap()))?
                 },
-                ("cols", _) => {
+                ("cols", sm) => {
                     Self::shuffle_cols_command(
-                        datasource(m),
-                        datasink(m))?
+                        datasource(sm.unwrap()),
+                        datasink(sm.unwrap()))?
                 },
                 (_, _) => {}
             };

@@ -14,6 +14,7 @@ pub mod seqs {
     use std::{cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
+    use std::collections::hash_map::Entry::{Vacant, Occupied};
 
     #[derive(Debug)]
     pub enum SeqError {
@@ -24,6 +25,7 @@ pub mod seqs {
         EditError,
         Empty,
     }
+
     impl Display for SeqError {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
             match self {
@@ -53,9 +55,10 @@ pub mod seqs {
             }
         }
     }
+
     impl From<SeqError> for std::io::Error {
         fn from(x: SeqError) -> Self {
-            return std::io::Error::new(
+            std::io::Error::new(
                 ErrorKind::Other,
                 format!("{}.\n", x)
             )
@@ -83,7 +86,7 @@ pub mod seqs {
     }
 
     /// Struct to represent a single sequence of a MSA
-    #[derive(Clone, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug, Eq)]
     pub struct AnnotatedSequence {
         id: String,
         sequence: Option<Vec<char>>,
@@ -141,12 +144,12 @@ pub mod seqs {
         /// assert_eq!(b.seq(), Some(&vec!['G', 'G', 'G']));
         ///
         /// ```
-        pub fn set_sequence(&mut self, seq: Vec<char>) -> () {
+        pub fn set_sequence(&mut self, seq: Vec<char>) {
             self.sequence = Some(seq);
         }
 
-        pub fn set_sequence_as_string(&mut self, seq: String) -> () {
-            if seq.len() == 0 {
+        pub fn set_sequence_as_string(&mut self, seq: String) {
+            if seq.is_empty() {
                 self.sequence = None;
             } else {
                 self.sequence = Some(seq.chars().collect());
@@ -174,7 +177,7 @@ pub mod seqs {
         /// a.set_id(String::from("S2"));
         /// assert_eq!(a.id() , "S2");
         /// ```
-        pub fn set_id(&mut self, id: String) -> () {
+        pub fn set_id(&mut self, id: String) {
             self.id = id;
         }
 
@@ -187,7 +190,7 @@ pub mod seqs {
         pub fn seq(&self) -> Option<&Vec<char>> {
             match &self.sequence {
                 None => None,
-                Some(x) => Some(&x),
+                Some(x) => Some(x),
             }
         }
 
@@ -222,6 +225,16 @@ pub mod seqs {
             }
         }
 
+        /// Checks if the sequence is empty.
+        /// ```
+        /// use famlib::seqs::AnnotatedSequence;
+        /// let mut a = AnnotatedSequence::empty(String::from("S1"));
+        /// assert!(a.is_empty());
+        /// ```
+        pub fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+
         /// Gets a copy the sequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
@@ -249,7 +262,7 @@ pub mod seqs {
         }
     }
 
-    #[derive(Clone, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Eq, Debug)]
     pub struct SequenceCollection {
         sequences: Vec<AnnotatedSequence>,
         ids: HashMap<String, usize>, // Maps id to index in sequences vector
@@ -269,7 +282,7 @@ pub mod seqs {
         }
 
         /// Mute the SequenceCollection to a Alignment
-        pub fn to_msa(self) -> Result<Alignment, Self> {
+        pub fn to_msa(self) -> Result<Alignment, SeqError> {
             let mut msa = Alignment::new();
             if self.size() == 0 {
                 msa.seqs = self;
@@ -281,9 +294,15 @@ pub mod seqs {
                     msa.length = Some(ref_len);
                     Ok(msa)
                 } else {
-                    Err(self)
+                    Err(SeqError::DifferentLength)
                 }
             }
+        }
+    }
+
+    impl Default for SequenceCollection {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -338,9 +357,7 @@ pub mod seqs {
                         &seq[seq.len()-(col_width-3)..seq.len()]);
                 } else {
                     let mut sb = seq.chars().collect::<Vec<char>>();
-                    for _ in sb.len()..max_ncol*col_width {
-                        sb.push(' ');
-                    }
+                    sb.resize(max_ncol*col_width, ' ');
                     seq = sb.into_iter().collect();
                 }
                 seq = seq.chars().enumerate().flat_map(
@@ -385,7 +402,7 @@ pub mod seqs {
             } else {
                 for x in self.ids.values_mut() {
                     if *x >= index {
-                        *x = *x + 1;
+                        *x += 1;
                     }
                 }
                 self.ids.insert(seq.id().to_string(), index);
@@ -410,12 +427,16 @@ pub mod seqs {
         /// assert_eq!(seqs.get(1).unwrap().id(), "S2");
         /// ```
         fn add(&mut self, seq: AnnotatedSequence) -> Result<(), SeqError> {
-            if self.ids.contains_key(&seq.id().to_string()) {
-                Err(SeqError::DuplicatedId(seq.id().to_string()))
-            } else {
-                self.ids.insert(seq.id().to_string(), self.ids.len());
-                self.sequences.push(seq);
-                Ok(())
+            let last_index = self.ids.len();
+            let entry = self.ids.entry(seq.id().to_string());
+            match entry {
+                Vacant(e) => {
+                    e.insert(last_index);
+                    Ok(())
+                },
+                Occupied(_) => {
+                    Err(SeqError::DuplicatedId(seq.id().to_string()))
+                }
             }
         }
 
@@ -501,7 +522,7 @@ pub mod seqs {
                 let index = self.ids.remove(id).unwrap();
                 for x in self.ids.values_mut() {
                     if *x > index {
-                        *x = *x - 1;
+                        *x -= 1;
                     }
                 }
                 Some(self.sequences.remove(index))
@@ -535,7 +556,7 @@ pub mod seqs {
         }
         fn iter(&self) -> SequenceIterable<'_> {
             SequenceIterable {
-                sequences: &self,
+                sequences: self,
                 next: 0,
             }
         }
@@ -546,12 +567,12 @@ pub mod seqs {
         /// Remove row in Sequence collection.
         /// args: index: 0-based index of the element to be removed.
         fn remove(&mut self, index: usize) -> Option<AnnotatedSequence> {
-            if self.ids.len() > 0 && index < self.size() {
+            if !self.ids.is_empty() && index < self.size() {
                 let r = self.sequences.remove(index);
                 self.ids.remove(r.id());
                 for x in self.ids.values_mut() {
                     if *x > index {
-                        *x = *x - 1
+                        *x -= 1
                     }
                 }
                 Some(r)
@@ -606,9 +627,9 @@ pub mod seqs {
             }
             let mut own_sequences: Vec<_> = self
                 .sequences
-                .to_owned()
-                .into_iter()
-                .map(|x| Some(x))
+                .iter()
+                .cloned()
+                .map(Some)
                 .collect();
             self.sequences = order
                 .iter()
@@ -807,10 +828,7 @@ pub mod seqs {
 
         /// Return the number of columns of the MSA
         pub fn length(&self) -> usize {
-            match self.length {
-                None => 0,
-                Some(x) => x,
-            }
+            self.length.unwrap_or(0)
         }
 
         pub fn column(&self, index: usize) -> Option<Vec<char>> {
@@ -841,7 +859,7 @@ pub mod seqs {
 
         pub fn columns(&self) -> ColumnIterable {
             ColumnIterable {
-                msa: &self,
+                msa: self,
                 next: 0,
             }
         }
@@ -866,6 +884,11 @@ pub mod seqs {
         }
         pub fn seq_col_owned(self) -> SequenceCollection {
             self.seqs
+        }
+    }
+    impl Default for Alignment {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
