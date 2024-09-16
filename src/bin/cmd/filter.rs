@@ -1,6 +1,6 @@
 use std::io;
 
-use famlib::filter::Filter as SqFilter;
+use famlib::filter::FilterBufferedSequenceCollection;
 use crate::data::{DataSink, DataSource};
 use super::{datasink, datasource, Command};
 
@@ -14,10 +14,17 @@ impl Filter {
         keep: bool,
         pattern: &str
     ) -> io::Result<()> {
-        let input = input.get_sequence_collection().unwrap();
-        let result = input.filter_regex_id(pattern, ignore_case, keep);
+        let bsq = input
+            .get_buffered_sequence_collection()
+            .unwrap();
+        let result = FilterBufferedSequenceCollection::filter_regex_id(
+            Box::new(bsq),
+            ignore_case,
+            keep,
+            pattern
+        );
         output
-            .write_fasta(&result)
+            .write_buffered_to_fasta(&result)
             .map_err(Into::into)
     }
 }

@@ -1,4 +1,10 @@
-use crate::seqs::{AnnotatedSequence, SequenceAccesors, SequenceCollection};
+use crate::seqs::BufferedSeqCollectionFromRead;
+use crate::seqs::{
+  AnnotatedSequence,
+  SequenceAccesors,
+  SequenceCollection,
+  BufferedSeqCollection
+};
 use std::io::Error;
 use std::io::Write;
 
@@ -55,18 +61,19 @@ pub fn sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
     sequence_collection_from_bufread(io::stdin().lock())
 }
 
-// pub fn buffered_sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
-//     let buffer = io::stdin().lock();
-//     ok(BufferedSeqCollection(buffer))
-// }
+pub fn buffered_sequence_collection_from_stdin()
+  -> Result<BufferedSeqCollectionFromRead, Error> {
+    let buffer = io::stdin().lock();
+    Ok(BufferedSeqCollectionFromRead::new(Box::new(buffer)))
+}
 
-// pub fn buffered_sequence_collection_from_file(
-//   path: &Path
-// ) -> Result<SequenceCollection, Error> {
-//     let f = File::open(path)?;
-//     let reader = BufReader::new(f);
-//     ok(BufferedSeqCollection(reader))
-// }
+pub fn buffered_sequence_collection_from_file(
+  path: &Path
+) -> Result<BufferedSeqCollectionFromRead, Error> {
+    let f = File::open(path)?;
+    let reader = BufReader::new(f);
+    Ok(BufferedSeqCollectionFromRead::new(Box::new(reader)))
+}
 
 pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(
     seqs: &T1,
@@ -76,6 +83,24 @@ pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(
     for annseq in seqs.iter() {
         bw.write_fmt(format_args!(">{}\n", annseq.id()))?;
         bw.write_fmt(format_args!("{}\n", annseq.seq_as_string()))?;
+    }
+    Ok(())
+}
+
+pub fn write_buffered_sequence_collection<T1: BufferedSeqCollection, T2: Write>(
+    seqs: &T1,
+    writer: T2,
+) -> Result<(), io::Error> {
+    let mut bw = BufWriter::new(writer);
+    loop {
+        let s = seqs.next_sequence();
+        match s {
+            Some(s) => {
+                bw.write_fmt(format_args!(">{}\n", s.id()))?;
+                bw.write_fmt(format_args!("{}\n", s.seq_as_string()))?;
+            }
+            None => break,
+        }
     }
     Ok(())
 }

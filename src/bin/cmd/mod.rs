@@ -13,6 +13,7 @@ pub mod edit;
 pub mod random;
 pub mod onepixel;
 pub mod filter;
+pub mod degap;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {

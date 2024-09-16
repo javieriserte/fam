@@ -1,48 +1,48 @@
-use crate::seqs::Alignment;
-use crate::seqs::BufferedSeqCollection;
 use crate::seqs::SequenceAccesors;
+use crate::seqs::Alignment;
+use crate::seqs::AnnotatedSequence;
+use crate::seqs::ApplyBufferedSequenceCollection;
 use crate::seqs::SequenceCollection;
+use crate::seqs::BufferedSeqCollection;
 use regex::RegexBuilder;
 
 pub trait Filter<T> {
     fn filter_regex_id(
-        &mut self,
+        &self,
         regex: &str,
         ignore_case: bool,
         keep: bool
     ) -> T;
 }
 
-// impl<'a> Filter<BufferedSeqCollection<'a>> for BufferedSeqCollection<'a> {
-//     fn filter_regex_id(
-//         &mut self,
-//         regex: &str,
-//         ignore_case: bool,
-//         keep: bool
-//     ) -> BufferedSeqCollection<'a> {
-//         let re = RegexBuilder::new(regex)
-//             .case_insensitive(ignore_case)
-//             .build()
-//             .unwrap();
-//         let result = BufferedSeqCollection::from_modification(
-//             self,
-//             move |x| {
-//                 loop {
-//                     let s = x.next_sequence();
-//                     match s {
-//                         Some(s) => {
-//                             if re.is_match(&s.id()) ^ !keep {
-//                                 return Some(s)
-//                             }
-//                         }
-//                         None => return None
-//                     }
-//                 }
-//             }
-//         );
-//         return result
-//     }
-// }
+pub struct FilterBufferedSequenceCollection{}
+
+impl FilterBufferedSequenceCollection {
+    pub fn filter_regex_id(
+        bsc: Box<dyn BufferedSeqCollection>,
+        ignore_case:bool,
+        keep: bool,
+        pattern: &str
+    ) -> ApplyBufferedSequenceCollection {
+        let re = RegexBuilder::new(pattern)
+            .case_insensitive(ignore_case)
+            .build()
+            .unwrap();
+        let filter_func = move |s: AnnotatedSequence| {
+            loop {
+                if re.is_match(&s.id()) ^ !keep {
+                    return vec![s]
+                } else {
+                    return vec![]
+                }
+            }
+        };
+        ApplyBufferedSequenceCollection::new(
+            bsc,
+            Box::new(filter_func)
+        )
+    }
+}
 
 impl Filter<SequenceCollection> for SequenceCollection {
     fn filter_regex_id(
@@ -74,8 +74,7 @@ impl Filter<Alignment> for Alignment {
         ignore_case: bool,
         keep: bool
     ) -> Alignment {
-        self
-            .seq_col()
+        self.seq_col()
             .filter_regex_id(regex, ignore_case, keep)
             .to_msa()
             .expect("This shouldn't fail, comes and go from and Alignment.")

@@ -9,9 +9,15 @@ pub mod clustering;
 pub mod random_voronoi;
 pub mod matrices;
 pub mod filter;
+pub mod degap;
 
 pub mod seqs {
-    use std::{borrow::BorrowMut, cell::{Ref, RefCell}, cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
+    use std::{
+        cell::RefCell,
+        cmp::{max, min},
+        collections::HashMap,
+        io::{BufRead, ErrorKind}
+    };
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
     use std::collections::hash_map::Entry::{Vacant, Occupied};
@@ -133,7 +139,10 @@ pub mod seqs {
         /// Set or change sequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let mut a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATC"));
+        /// let mut a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATC")
+        /// );
         /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C']));
         /// a.set_sequence(vec!['G', 'G', 'G']);
         /// assert_eq!(a.seq(), Some(&vec!['G', 'G', 'G']));
@@ -159,7 +168,10 @@ pub mod seqs {
         /// Moves out the sequence
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let mut a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATC"));
+        /// let mut a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATC")
+        /// );
         /// assert_eq!(a.seq(), Some(&vec!['A', 'T', 'C']));
         /// let b = a.take_sequence();
         /// assert_eq!(a.seq() , None);
@@ -184,7 +196,10 @@ pub mod seqs {
         /// Retrieves a reference of the sequence.
         /// ```
         /// use famlib::seqs::AnnotatedSequence;
-        /// let a = AnnotatedSequence::from_string(String::from("S1"), String::from("ATCG"));
+        /// let a = AnnotatedSequence::from_string(
+        ///     String::from("S1"),
+        ///     String::from("ATCG")
+        /// );
         /// assert_eq!(a.seq() , Some(&vec!['A', 'T', 'C', 'G']));
         /// ```
         pub fn seq(&self) -> Option<&Vec<char>> {
@@ -298,6 +313,10 @@ pub mod seqs {
                 }
             }
         }
+
+        pub fn to_buffered(self) -> BufferedSeqCollectionFromSeqCol {
+            BufferedSeqCollectionFromSeqCol::new(self)
+        }
     }
 
     impl Default for SequenceCollection {
@@ -367,7 +386,10 @@ pub mod seqs {
                         vec![x]
                     }
                 ).collect();
-                writeln!(f, "> {:<w$} {} {}", id, seq, len, w=printed_id_length)?;
+                writeln!(
+                    f,
+                    "> {:<w$} {} {}", id, seq, len, w=printed_id_length
+                )?;
                 if row==2 && self.size()>6 {writeln!(f, "...")?;}
             }
             Ok(())
@@ -432,6 +454,7 @@ pub mod seqs {
             match entry {
                 Vacant(e) => {
                     e.insert(last_index);
+                    self.sequences.push(seq);
                     Ok(())
                 },
                 Occupied(_) => {
@@ -684,18 +707,29 @@ pub mod seqs {
     }
 
     pub trait BufferedSeqCollection {
-        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>>;
+        fn next_sequence(&self) -> Option<AnnotatedSequence>;
+        fn to_sequence_collection(&self) -> SequenceCollection {
+            let mut sc = SequenceCollection::new();
+            loop {
+                match self.next_sequence() {
+                    None => break,
+                    Some(x) => sc.add(x).unwrap()
+                }
+            }
+            sc
+        }
     }
 
-    pub struct BufferedSeqCollectionFromRead<'a> {
-        buffer: RefCell<Option<&'a mut dyn BufRead>>,
+    pub struct BufferedSeqCollectionFromRead {
+        buffer: RefCell<Option<Box<dyn BufRead>>>,
+        // buffer: RefCell<Option<&'a mut dyn BufRead>>,
         current_seq: RefCell<Vec<String>>,
         current_id: RefCell<Option<String>>,
         consumed: RefCell<bool>
     }
 
-    impl <'a> BufferedSeqCollectionFromRead <'a>{
-        pub fn new(buffer: &'a mut dyn BufRead) -> Self {
+    impl BufferedSeqCollectionFromRead {
+        pub fn new(buffer: Box<dyn BufRead>) -> Self {
             BufferedSeqCollectionFromRead {
                 buffer: RefCell::new(Some(buffer)),
                 current_seq: RefCell::new(vec![]),
@@ -735,11 +769,10 @@ pub mod seqs {
             (bytes_read > 0)
                 .then_some(line)
         }
-
     }
 
-    impl BufferedSeqCollection for BufferedSeqCollectionFromRead<'_> {
-        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>> {
+    impl BufferedSeqCollection for BufferedSeqCollectionFromRead {
+        fn next_sequence(&self) -> Option<AnnotatedSequence> {
             if self.is_consumed() {
                 return None;
             }
@@ -767,8 +800,40 @@ pub mod seqs {
                 }
                 if returning.is_some() || eof {
                     return returning
-                        .map(|x| vec![x]);
                 }
+            }
+        }
+    }
+
+    pub struct BufferedSeqCollectionFromSeqCol {
+        seqcol: SequenceCollection,
+        current_index: RefCell<usize>,
+        consumed: RefCell<bool>
+    }
+
+    impl BufferedSeqCollectionFromSeqCol {
+        pub fn new(seqcol: SequenceCollection) -> Self {
+            BufferedSeqCollectionFromSeqCol {
+                seqcol,
+                current_index: RefCell::new(0),
+                consumed: RefCell::new(false)
+            }
+        }
+    }
+
+    impl BufferedSeqCollection for BufferedSeqCollectionFromSeqCol {
+        fn next_sequence(&self) -> Option<AnnotatedSequence> {
+            if *self.consumed.borrow() {
+                return None;
+            }
+            let index = *self.current_index.borrow();
+            let seq = &self.seqcol;
+            if seq.get(index).is_none() {
+                self.consumed.replace(true);
+                None
+            } else {
+                self.current_index.replace(index + 1);
+                seq.get(index).cloned()
             }
         }
     }
@@ -776,35 +841,46 @@ pub mod seqs {
     pub struct ApplyBufferedSequenceCollection {
         source: RefCell<Box<dyn BufferedSeqCollection>>,
         apply_fun: Box<dyn Fn(AnnotatedSequence) -> Vec<AnnotatedSequence>>,
+        consumed: RefCell<bool>,
         interal_buffered_sequences: RefCell<Vec<AnnotatedSequence>>
     }
 
     impl ApplyBufferedSequenceCollection {
-        fn new(
+        pub fn new(
             source: Box<dyn BufferedSeqCollection>,
             apply_fun: Box<dyn Fn(AnnotatedSequence) -> Vec<AnnotatedSequence>>
         ) -> ApplyBufferedSequenceCollection {
             ApplyBufferedSequenceCollection {
                 source: RefCell::new(source),
                 apply_fun,
+                consumed: RefCell::new(false),
                 interal_buffered_sequences: RefCell::new(vec![])
             }
         }
     }
 
     impl BufferedSeqCollection for ApplyBufferedSequenceCollection {
-        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>> {
+        fn next_sequence(&self) -> Option<AnnotatedSequence> {
             loop {
                 if !self.interal_buffered_sequences.borrow().is_empty() {
-                    let ann_seq = self.interal_buffered_sequences.borrow_mut().pop();
-                    return ann_seq.map(
-                        |x| (self.apply_fun)(x)
-                    )
+                    return self
+                        .interal_buffered_sequences
+                        .borrow_mut()
+                        .pop();
                 } else {
-                    let cseq = self.source.borrow().next_sequence().unwrap_or(vec![]);
-                    let mut ib = self.interal_buffered_sequences.borrow_mut();
-                    for seq in cseq.into_iter() {
-                        ib.push(seq);
+                    match self.source.borrow().next_sequence() {
+                        None => {
+                            self.consumed.replace(true);
+                            return None;
+                        }
+                        Some(seq) => {
+                            let mut ib = self
+                                .interal_buffered_sequences
+                                .borrow_mut();
+                            for x in (self.apply_fun)(seq).into_iter() {
+                                ib.push(x);
+                            }
+                        }
                     }
                 }
             }
@@ -1170,7 +1246,9 @@ mod test{
         let mut sq = SequenceCollection::new();
         for i in 0..10 {
             let ca = AnnotatedSequence::from_string(
-                format!("Seq_{}", i), String::from("ATGKKKGTGCATTAA"));
+                format!("Seq_{}", i),
+                String::from("ATGKKKGTGCATTAA")
+            );
             sq.add(ca).unwrap();
         }
         sq.to_msa().ok().unwrap()
@@ -1278,6 +1356,7 @@ mod test{
 > Seq_9      ATGKKKGTGC ATTAA      15
 ";
         let msa = sample_display_msa();
-        assert_eq!(format!("{}", msa), expected);
+        let display_test = format!("{}", msa);
+        assert_eq!(display_test, expected);
     }
 }

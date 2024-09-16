@@ -14,7 +14,8 @@ use cmd::{
     pop::Pop,
     random::Random,
     remove::Remove,
-    filter::Filter
+    filter::Filter,
+    degap::Degap,
 };
 use std::io;
 
@@ -466,6 +467,28 @@ fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
+fn add_degap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("degap")
+            .about("Remove gaps from the alignment")
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+            )
+    );
+    return app;
+}
+
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.4")
@@ -485,6 +508,7 @@ fn create_app() -> App<'static, 'static> {
     app = add_shuffle_subcommand(app);
     app = app_plot_subcommand(app);
     app = add_filter_subcommand(app);
+    app = add_degap_subcommand(app);
     return app;
 }
 
@@ -503,6 +527,7 @@ pub fn main() -> io::Result<()> {
         Box::new(Edit{}),
         Box::new(Pop{}),
         Box::new(Filter{}),
+        Box::new(Degap{}),
     ];
     let is_there_any_command = commands
         .iter()

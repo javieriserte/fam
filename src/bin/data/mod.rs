@@ -1,9 +1,18 @@
 use famlib::{
     fastaio::{
-        write_sequence_collection,
+        buffered_sequence_collection_from_file,
+        buffered_sequence_collection_from_stdin,
         sequence_collection_from_file,
-        sequence_collection_from_stdin},
-    seqs::{SequenceCollection,SequenceAccesors}
+        sequence_collection_from_stdin,
+        write_buffered_sequence_collection,
+        write_sequence_collection
+    },
+    seqs::{
+        BufferedSeqCollection,
+        BufferedSeqCollectionFromRead,
+        SequenceAccesors,
+        SequenceCollection
+    }
 };
 use std::fs::File;
 use std::path::Path;
@@ -12,19 +21,21 @@ use std::io::stdout;
 
 #[derive(Debug)]
 /// Representation of the reading input of a MSA or sequence collection.
-/// TODO: Convert it to enum
 pub enum DataSource {
     StdIn,
     FilePath(String),
 }
 
 impl DataSource {
-    pub fn get_buffered_sequence_collection(&self) -> Option<SequenceCollection> {
+    pub fn get_buffered_sequence_collection(&self)
+        -> Option<BufferedSeqCollectionFromRead> {
         match self {
             DataSource::StdIn => buffered_sequence_collection_from_stdin().ok(),
-            DataSource::FilePath(file) => sequence_collection_from_file()
+            DataSource::FilePath(file) => {
+                buffered_sequence_collection_from_file(&Path::new(&file)).ok()
             }
         }
+    }
     pub fn get_sequence_collection(&self) -> Option<SequenceCollection> {
         match self {
             DataSource::StdIn => sequence_collection_from_stdin().ok(),
@@ -56,7 +67,10 @@ pub enum DataSink {
 
 impl DataSink {
     /// Writes a SequenceAccessors to an output.
-    pub fn write_fasta<T: SequenceAccesors>(&self, seqs: &T) -> io::Result<()> {
+    pub fn write_fasta<T: SequenceAccesors>(
+        &self,
+        seqs: &T
+    ) -> io::Result<()> {
         match self {
             DataSink::StdOut => {
                 write_sequence_collection(seqs, stdout().lock())
@@ -64,6 +78,21 @@ impl DataSink {
             DataSink::FilePath(x) => {
                 let file = File::create(x).unwrap();
                 write_sequence_collection(seqs, file)
+            }
+        }
+    }
+    /// Writes a Buffered Sequence collection to fasta file.
+    pub fn write_buffered_to_fasta<T: BufferedSeqCollection>(
+        &self,
+        seqs: &T
+    ) -> io::Result<()> {
+        match self {
+            DataSink::StdOut => {
+                write_buffered_sequence_collection(seqs, stdout().lock())
+            }
+            DataSink::FilePath(x) => {
+                let file = File::create(x).unwrap();
+                write_buffered_sequence_collection(seqs, file)
             }
         }
     }
