@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Current Version
 
-- Version 0.0.5 - 2024-09-16
+- Version 0.0.6 - 2024-09-16
 
 ## New features
+
+- [#28] Allow dots symbols while degapping sequences
+
+## Version 0.0.5 - 2024-09-16
 
 - Added Degap and filter commands.
 - [#22] - 2021-02-18 Hobohm1 Clustering

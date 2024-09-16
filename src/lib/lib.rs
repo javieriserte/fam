@@ -778,8 +778,9 @@ pub mod seqs {
             }
             loop {
                 let mut returning: Option<AnnotatedSequence> = None;
-                let eof = self.next_line().is_none();
-                let mut line = self.next_line().unwrap_or_default();
+                let next_line = self.next_line();
+                let eof = next_line.is_none();
+                let mut line = next_line.unwrap_or_default();
                 if eof || line.starts_with(">") {
                     if let Some(id) = self.take_current_id() {
                         let ann_seq = AnnotatedSequence::from_string(
