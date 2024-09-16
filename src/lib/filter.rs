@@ -13,36 +13,36 @@ pub trait Filter<T> {
     ) -> T;
 }
 
-impl<'a> Filter<BufferedSeqCollection<'a>> for BufferedSeqCollection<'a> {
-    fn filter_regex_id(
-        &mut self,
-        regex: &str,
-        ignore_case: bool,
-        keep: bool
-    ) -> BufferedSeqCollection<'a> {
-        let re = RegexBuilder::new(regex)
-            .case_insensitive(ignore_case)
-            .build()
-            .unwrap();
-        let result = BufferedSeqCollection::from_modification(
-            self,
-            move |x| {
-                loop {
-                    let s = x.next_sequence();
-                    match s {
-                        Some(s) => {
-                            if re.is_match(&s.id()) ^ !keep {
-                                return Some(s)
-                            }
-                        }
-                        None => return None
-                    }
-                }
-            }
-        );
-        return result
-    }
-}
+// impl<'a> Filter<BufferedSeqCollection<'a>> for BufferedSeqCollection<'a> {
+//     fn filter_regex_id(
+//         &mut self,
+//         regex: &str,
+//         ignore_case: bool,
+//         keep: bool
+//     ) -> BufferedSeqCollection<'a> {
+//         let re = RegexBuilder::new(regex)
+//             .case_insensitive(ignore_case)
+//             .build()
+//             .unwrap();
+//         let result = BufferedSeqCollection::from_modification(
+//             self,
+//             move |x| {
+//                 loop {
+//                     let s = x.next_sequence();
+//                     match s {
+//                         Some(s) => {
+//                             if re.is_match(&s.id()) ^ !keep {
+//                                 return Some(s)
+//                             }
+//                         }
+//                         None => return None
+//                     }
+//                 }
+//             }
+//         );
+//         return result
+//     }
+// }
 
 impl Filter<SequenceCollection> for SequenceCollection {
     fn filter_regex_id(

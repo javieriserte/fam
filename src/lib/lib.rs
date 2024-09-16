@@ -11,7 +11,7 @@ pub mod matrices;
 pub mod filter;
 
 pub mod seqs {
-    use std::{borrow::BorrowMut, cell::RefCell, cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
+    use std::{borrow::BorrowMut, cell::{Ref, RefCell}, cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
     use std::collections::hash_map::Entry::{Vacant, Occupied};
@@ -774,7 +774,41 @@ pub mod seqs {
     }
 
     pub struct ApplyBufferedSequenceCollection {
-        source: RefCell<Option<Box<dyn BufferedSeqCollection>>>
+        source: RefCell<Box<dyn BufferedSeqCollection>>,
+        apply_fun: Box<dyn Fn(AnnotatedSequence) -> Vec<AnnotatedSequence>>,
+        interal_buffered_sequences: RefCell<Vec<AnnotatedSequence>>
+    }
+
+    impl ApplyBufferedSequenceCollection {
+        fn new(
+            source: Box<dyn BufferedSeqCollection>,
+            apply_fun: Box<dyn Fn(AnnotatedSequence) -> Vec<AnnotatedSequence>>
+        ) -> ApplyBufferedSequenceCollection {
+            ApplyBufferedSequenceCollection {
+                source: RefCell::new(source),
+                apply_fun,
+                interal_buffered_sequences: RefCell::new(vec![])
+            }
+        }
+    }
+
+    impl BufferedSeqCollection for ApplyBufferedSequenceCollection {
+        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>> {
+            loop {
+                if !self.interal_buffered_sequences.borrow().is_empty() {
+                    let ann_seq = self.interal_buffered_sequences.borrow_mut().pop();
+                    return ann_seq.map(
+                        |x| (self.apply_fun)(x)
+                    )
+                } else {
+                    let cseq = self.source.borrow().next_sequence().unwrap_or(vec![]);
+                    let mut ib = self.interal_buffered_sequences.borrow_mut();
+                    for seq in cseq.into_iter() {
+                        ib.push(seq);
+                    }
+                }
+            }
+        }
     }
 
     pub struct Alignment {
