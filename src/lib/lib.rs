@@ -11,7 +11,7 @@ pub mod matrices;
 pub mod filter;
 
 pub mod seqs {
-    use std::{cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
+    use std::{borrow::BorrowMut, cell::RefCell, cmp::{max, min}, collections::HashMap, io::{BufRead, ErrorKind}, sync::mpsc::RecvTimeoutError};
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
     use std::collections::hash_map::Entry::{Vacant, Occupied};
@@ -683,83 +683,98 @@ pub mod seqs {
         }
     }
 
-
-    pub struct BufferedSeqCollection<'a> {
-        buffer: Option<&'a mut dyn BufRead>,
-        current_seq: Vec<String>,
-        current_id: Option<String>,
-        consumed:bool,
-        source_seq: Option<&'a BufferedSeqCollection<'a>>,
-        mod_func: Option<Box<dyn FnMut(&mut BufferedSeqCollection<'a>) -> Option<AnnotatedSequence>>>
+    pub trait BufferedSeqCollection {
+        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>>;
     }
 
-    impl<'a> BufferedSeqCollection<'a> {
+    pub struct BufferedSeqCollectionFromRead<'a> {
+        buffer: RefCell<Option<&'a mut dyn BufRead>>,
+        current_seq: RefCell<Vec<String>>,
+        current_id: RefCell<Option<String>>,
+        consumed: RefCell<bool>
+    }
+
+    impl <'a> BufferedSeqCollectionFromRead <'a>{
         pub fn new(buffer: &'a mut dyn BufRead) -> Self {
-            BufferedSeqCollection{
-                buffer: Some(buffer),
-                current_seq: vec![],
-                current_id: None,
-                consumed: false,
-                source_seq: None,
-                mod_func: None
+            BufferedSeqCollectionFromRead {
+                buffer: RefCell::new(Some(buffer)),
+                current_seq: RefCell::new(vec![]),
+                current_id: RefCell::new(None),
+                consumed: RefCell::new(false)
             }
         }
-        pub fn from_modification(
-            buffer: &'a mut BufferedSeqCollection<'a>,
-            mod_func: impl FnMut(&mut BufferedSeqCollection<'a>) -> Option<AnnotatedSequence> + 'static
-        ) -> Self {
-            BufferedSeqCollection{
-                buffer: None,
-                current_seq: vec![],
-                current_id: None,
-                consumed: false,
-                source_seq: Some(buffer),
-                mod_func: Some(Box::new(mod_func))
-            }
+        pub fn set_consumed(&self, consumed: bool) {
+            self.consumed.replace(consumed);
         }
-        pub fn next_sequence(&mut self) -> Option<AnnotatedSequence> {
-            if self.consumed {
+        pub fn is_consumed(&self) -> bool {
+            return self.consumed.borrow().clone()
+        }
+        pub fn add_line_to_sequence(&self, line: String) {
+            self.current_seq.borrow_mut().push(line)
+        }
+        pub fn get_current_seq(&self) -> String {
+            self.current_seq.borrow().join("")
+        }
+        pub fn clear_current_seq(&self) {
+            self.current_seq.borrow_mut().clear()
+        }
+        pub fn set_current_id(&self, id: String) {
+            self.current_id.replace(Some(id));
+        }
+        pub fn take_current_id(&self) -> Option<String> {
+            self.current_id.take()
+        }
+        pub fn next_line(&self) -> Option<String> {
+            let mut line = String::new();
+            let bytes_read = self
+                .buffer
+                .borrow_mut()
+                .as_mut()?
+                .read_line(&mut line)
+                .ok()?;
+            (bytes_read > 0)
+                .then_some(line)
+        }
+
+    }
+
+    impl BufferedSeqCollection for BufferedSeqCollectionFromRead<'_> {
+        fn next_sequence(&self) -> Option<Vec<AnnotatedSequence>> {
+            if self.is_consumed() {
                 return None;
             }
-            if self.buffer.is_some() {
-                loop {
-                    let mut line = String::new();
-                    let mut returning: Option<AnnotatedSequence> = None;
-                    let len = self.buffer.unwrap().read_line(&mut line).unwrap();
-                    if len == 0 || line.starts_with(">") {
-                    if let Some(id) = &self.current_id {
+            loop {
+                let mut returning: Option<AnnotatedSequence> = None;
+                let eof = self.next_line().is_none();
+                let mut line = self.next_line().unwrap_or_default();
+                if eof || line.starts_with(">") {
+                    if let Some(id) = self.take_current_id() {
                         let ann_seq = AnnotatedSequence::from_string(
-                            id.clone(),
-                            (&self.current_seq).join(""),
+                            id,
+                            self.get_current_seq(),
                         );
-                        if len == 0 {
-                            self.consumed = true;
-                        };
+                        self.set_consumed(eof);
                         returning = Some(ann_seq);
                     };
-                    self.current_seq.clear();
+                    self.clear_current_seq();
                     if line.starts_with(">") {
                         line.truncate(line.trim_end().len());
-                        self.current_id = Some(line.split_off(1));
+                        self.set_current_id(line.split_off(1));
                     }
-                    } else {
-                        line.truncate(line.trim_end().len());
-                        self.current_seq.push(line);
-                    }
-                    if returning.is_some() {
-                        return returning;
-                    }
-                }
-            }
-            if self.source_seq.is_some() {
-                if let Some(f) = &mut self.mod_func {
-                    return f(self.source_seq.unwrap());
                 } else {
-                    return None;
+                    line.truncate(line.trim_end().len());
+                    self.add_line_to_sequence(line);
+                }
+                if returning.is_some() || eof {
+                    return returning
+                        .map(|x| vec![x]);
                 }
             }
-            return None
         }
+    }
+
+    pub struct ApplyBufferedSequenceCollection {
+        source: RefCell<Option<Box<dyn BufferedSeqCollection>>>
     }
 
     pub struct Alignment {

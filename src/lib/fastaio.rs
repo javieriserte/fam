@@ -55,18 +55,18 @@ pub fn sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
     sequence_collection_from_bufread(io::stdin().lock())
 }
 
-pub fn buffered_sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
-    let buffer = io::stdin().lock();
-    ok(BufferedSeqCollection(buffer))
-}
+// pub fn buffered_sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
+//     let buffer = io::stdin().lock();
+//     ok(BufferedSeqCollection(buffer))
+// }
 
-pub fn buffered_sequence_collection_from_file(
-  path: &Path
-) -> Result<SequenceCollection, Error> {
-    let f = File::open(path)?;
-    let reader = BufReader::new(f);
-    ok(BufferedSeqCollection(reader))
-}
+// pub fn buffered_sequence_collection_from_file(
+//   path: &Path
+// ) -> Result<SequenceCollection, Error> {
+//     let f = File::open(path)?;
+//     let reader = BufReader::new(f);
+//     ok(BufferedSeqCollection(reader))
+// }
 
 pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(
     seqs: &T1,
