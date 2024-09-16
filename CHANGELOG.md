@@ -4,13 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Current Version
 
-- Versión 0.0.4-dev - 2021-02-15
-
-- [#22] - 2021-02-18 Hobohm1 Clustering
-- [#23] - 2024-08-07 Compute substittution matrices
+- Version 0.0.5 - 2024-09-16
 
 ## New features
 
+- Added Degap and filter commands.
+- [#22] - 2021-02-18 Hobohm1 Clustering
+- [#23] - 2024-08-07 Compute substittution matrices
 - [#12] - 2021-02-11 Draw one pixel MSA plots
 - [#9] - 2021-02-09 Computes conservation using Shannon entropy
 - [#16] - 2021-02-08 Implement Display for Alignment and SequenceCollection
@@ -25,3 +25,4 @@ All notable changes to this project will be documented in this file.
 - Versión 0.0.1 - 2020-06-14 - First version
 - Versión 0.0.2 - 2020-06-14 - Added Changelog
 - Versión 0.0.3 - 2021-01-29 - Edit Sequences
+- Versión 0.0.4 - 2021-02-15

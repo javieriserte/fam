@@ -491,7 +491,7 @@ fn add_degap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
 
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
-        .version("0.0.4")
+        .version("0.0.5")
         .author("Javier A. Iserte <jiserte@leloir.org.ar>")
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app);
