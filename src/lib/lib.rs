@@ -10,13 +10,14 @@ pub mod random_voronoi;
 pub mod matrices;
 pub mod filter;
 pub mod degap;
+pub mod gapping;
 
 pub mod seqs {
     use std::{
         cell::RefCell,
         cmp::{max, min},
         collections::HashMap,
-        io::{BufRead, ErrorKind}
+        io::{BufRead, ErrorKind}, iter::FromIterator
     };
     use std::fmt::{Display, Error, Formatter};
     use std::iter::{IntoIterator, Iterator};
@@ -706,6 +707,55 @@ pub mod seqs {
         }
     }
 
+    /// Implements the `FromIterator` trait for `SequenceCollection`, allowing
+    /// it to be created from an iterator of `AnnotatedSequence` items.
+    ///
+    /// # Arguments
+    ///
+    /// * `iter` - An iterator that yields `AnnotatedSequence` items.
+    ///
+    /// # Returns
+    ///
+    /// A `SequenceCollection` containing all the `AnnotatedSequence` items from
+    /// the iterator.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use famlib::seqs::SequenceCollection;
+    /// use famlib::seqs::AnnotatedSequence;
+    /// use famlib::seqs::SequenceAccesors;
+    ///
+    /// fn build_a() -> SequenceCollection {
+    ///     let a = AnnotatedSequence::from_string(
+    ///         String::from("S1"),
+    ///         String::from("A--A--C--C--"));
+    ///     let b = AnnotatedSequence::from_string(
+    ///         String::from("S2"),
+    ///         String::from("TAGTACGATGAC"));
+    ///     let c = AnnotatedSequence::from_string(
+    ///         String::from("S3"),
+    ///         String::from("TAGTACGATGAC"));
+    ///     let mut seqcol = SequenceCollection::new();
+    ///     seqcol.add(a);
+    ///     seqcol.add(b);
+    ///     seqcol.add(c);
+    ///     return seqcol;
+    /// }
+    /// let sequences = build_a();
+    /// let collection: SequenceCollection = sequences.into_iter().collect();
+    /// assert_eq!(collection.size(), 3);
+    /// ```
+    impl FromIterator<AnnotatedSequence> for SequenceCollection {
+        fn from_iter<I: IntoIterator<Item = AnnotatedSequence>>(
+            iter: I
+        ) -> Self {
+            let mut seqcol = SequenceCollection::new();
+            for x in iter { seqcol.add(x).unwrap(); }
+            seqcol
+        }
+    }
+
     pub trait BufferedSeqCollection {
         fn next_sequence(&self) -> Option<AnnotatedSequence>;
         fn to_sequence_collection(&self) -> SequenceCollection {
@@ -778,8 +828,9 @@ pub mod seqs {
             }
             loop {
                 let mut returning: Option<AnnotatedSequence> = None;
-                let eof = self.next_line().is_none();
-                let mut line = self.next_line().unwrap_or_default();
+                let next_line = self.next_line();
+                let eof = next_line.is_none();
+                let mut line = next_line.unwrap_or_default();
                 if eof || line.starts_with(">") {
                     if let Some(id) = self.take_current_id() {
                         let ann_seq = AnnotatedSequence::from_string(

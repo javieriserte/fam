@@ -3,19 +3,7 @@ mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
 use cmd::{
-    Command,
-    collect::Collect,
-    concat::Concat,
-    dimension::Dimension,
-    edit::Edit,
-    gs::Gapstrip,
-    join::Join,
-    onepixel::OnePixel,
-    pop::Pop,
-    random::Random,
-    remove::Remove,
-    filter::Filter,
-    degap::Degap,
+    collect::Collect, concat::Concat, degap::Degap, dimension::Dimension, edit::Edit, filter::Filter, gs::Gapstrip, join::Join, onepixel::OnePixel, pad::PadWithGapsCommand, pop::Pop, random::Random, remove::Remove, Command
 };
 use std::io;
 
@@ -489,6 +477,35 @@ fn add_degap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
+fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("pad")
+            .about("Pad sequence collection with gaps")
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+            )
+            .arg(
+                Arg::with_name("width")
+                    .short("w")
+                    .long("width")
+                    .takes_value(true)
+                    .help("The final width of the sequences")
+            )
+    );
+    return app;
+}
+
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.5")
@@ -509,6 +526,7 @@ fn create_app() -> App<'static, 'static> {
     app = app_plot_subcommand(app);
     app = add_filter_subcommand(app);
     app = add_degap_subcommand(app);
+    app = add_pad_subcommand(app);
     return app;
 }
 
@@ -528,6 +546,7 @@ pub fn main() -> io::Result<()> {
         Box::new(Pop{}),
         Box::new(Filter{}),
         Box::new(Degap{}),
+        Box::new(PadWithGapsCommand{}),
     ];
     let is_there_any_command = commands
         .iter()
