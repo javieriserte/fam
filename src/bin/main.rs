@@ -451,6 +451,13 @@ fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .required(true)
                     .help("The search pattern to match")
             )
+            .arg(
+                Arg::with_name("exclude")
+                    .short("e")
+                    .long("exclude")
+                    .takes_value(false)
+                    .help("Exclude the matching sequences")
+            )
     );
     return app;
 }
@@ -472,6 +479,13 @@ fn add_degap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("out")
                     .takes_value(true)
                     .help("The output file")
+            )
+            .arg(
+                Arg::with_name("accept-dots")
+                    .short("d")
+                    .long("dots")
+                    .takes_value(false)
+                    .help("Accepts dots as valid gaps")
             )
     );
     return app;
@@ -508,8 +522,8 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
 
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
-        .version("0.0.5")
-        .author("Javier A. Iserte <jiserte@leloir.org.ar>")
+        .version("0.0.6")
+        .author("Javier A. Iserte <javiserte@gmail.com>")
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app);
     app = add_collect_subcommand(app);
