@@ -522,7 +522,7 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
 
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
-        .version("0.0.6")
+        .version("0.0.7")
         .author("Javier A. Iserte <javiserte@gmail.com>")
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app);

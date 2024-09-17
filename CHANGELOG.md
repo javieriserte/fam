@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Current Version
 
-- Version 0.0.6 - 2024-09-16
+- Version 0.0.7 - 2024-09-17
 
 ## New features
+
+- [#25] Add pad subcommand
+
+## Version 0.0.6 - 2024-09-16
 
 - [#28] Allow dots symbols while degapping sequences
 
