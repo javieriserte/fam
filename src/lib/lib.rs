@@ -420,7 +420,7 @@ pub mod seqs {
             index: usize,
             seq: AnnotatedSequence,
         ) -> Result<(), SeqError> {
-            if self.ids.contains_key(&seq.id().to_string()) {
+            if self.ids.contains_key(seq.id()) {
                 Err(SeqError::DuplicatedId(String::from(seq.id())))
             } else {
                 for x in self.ids.values_mut() {
@@ -791,7 +791,7 @@ pub mod seqs {
             self.consumed.replace(consumed);
         }
         pub fn is_consumed(&self) -> bool {
-            return self.consumed.borrow().clone()
+            return *self.consumed.borrow()
         }
         pub fn add_line_to_sequence(&self, line: String) {
             self.current_seq.borrow_mut().push(line)
@@ -886,6 +886,38 @@ pub mod seqs {
                 self.current_index.replace(index + 1);
                 seq.get(index).cloned()
             }
+        }
+    }
+
+    pub struct BufferedSeqCollectionFromFunction {
+        generator: Box<dyn Fn() -> Vec<AnnotatedSequence>>,
+        internal: RefCell<Vec<AnnotatedSequence>>
+    }
+
+    impl BufferedSeqCollectionFromFunction {
+        pub fn new(generator: Box<dyn Fn() -> Vec<AnnotatedSequence>>) -> Self {
+            let internal = RefCell::new(vec![]);
+            BufferedSeqCollectionFromFunction {
+                generator,
+                internal
+            }
+        }
+    }
+
+    impl BufferedSeqCollection for BufferedSeqCollectionFromFunction {
+        fn next_sequence(&self) -> Option<AnnotatedSequence> {
+            let mut internal = self.internal.borrow_mut();
+            if !internal.is_empty() {
+                return internal.pop()
+            }
+            // internal drops here, I can re borrow self.internal below
+            drop(internal);
+            let next = (self.generator)();
+            if !next.is_empty() {
+                self.internal.replace(next);
+                return self.next_sequence()
+            }
+            None
         }
     }
 
@@ -1238,11 +1270,14 @@ pub mod seqs {
 
 #[cfg(test)]
 mod test{
+    use crate::seqs::BufferedSeqCollection;
     use crate::seqs::SequenceCollection;
+    use crate::seqs::BufferedSeqCollectionFromFunction;
     use crate::seqs::Alignment;
     use crate::seqs::AnnotatedSequence;
     use crate::seqs::SequenceAccesors;
     use crate::seqs::SeqError;
+    use std::cell::RefCell;
     fn sample_sc() -> Result<SequenceCollection, SeqError> {
         let a = AnnotatedSequence::from_string(
             String::from("S1"),
@@ -1274,7 +1309,6 @@ mod test{
                 true => String::from(""),
                 false => {
                     (0..10*(i-1))
-                        .into_iter()
                         .map(|_| 'A')
                         .collect::<String>()
                         + &String::from("AAAAABBBBB")
@@ -1409,5 +1443,32 @@ mod test{
         let msa = sample_display_msa();
         let display_test = format!("{}", msa);
         assert_eq!(display_test, expected);
+    }
+    #[test]
+    fn test_seqcol_from_function() {
+        let x = RefCell::new(5);
+        let bsc = BufferedSeqCollectionFromFunction::new(
+            Box::new(
+                move || {
+                    let old = x.replace_with(|a| *a-1);
+                    if old == 0 {
+                        return vec![]
+                    }
+                    vec![
+                        AnnotatedSequence::from_string(
+                            "s1".to_string(),
+                            "actg".to_string()
+                        )
+                    ]
+                }
+            )
+        );
+        let mut counter = 0;
+        loop {
+            let ns = bsc.next_sequence();
+            if ns.is_none() { break; }
+            counter += 1;
+        }
+        assert_eq!(counter, 5);
     }
 }

@@ -29,12 +29,10 @@ impl FilterBufferedSequenceCollection {
             .build()
             .unwrap();
         let filter_func = move |s: AnnotatedSequence| {
-            loop {
-                if re.is_match(&s.id()) ^ !keep {
-                    return vec![s]
-                } else {
-                    return vec![]
-                }
+            if re.is_match(s.id()) ^ !keep {
+                vec![s]
+            } else {
+                vec![]
             }
         };
         ApplyBufferedSequenceCollection::new(
@@ -63,7 +61,7 @@ impl Filter<SequenceCollection> for SequenceCollection {
                     false => ()
                 }
             );
-        return result
+        result
     }
 }
 

@@ -31,7 +31,7 @@ impl PadWithGaps<AnnotatedSequence> for AnnotatedSequence {
           result
         }
       )
-      .unwrap_or(vec![]);
+      .unwrap_or_default();
     AnnotatedSequence::new(self.id().to_string(), seq)
   }
   fn pad_with_gaps_to_max_length(&self) -> AnnotatedSequence {

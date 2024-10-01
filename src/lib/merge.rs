@@ -1,3 +1,4 @@
+use crate::seqs::{ApplyBufferedSequenceCollection, BufferedSeqCollection};
 use crate::seqs::{
     AnnotatedSequence, SeqError, SequenceAccesors, SequenceCollection,
 };
@@ -26,13 +27,13 @@ pub fn concat<T: SequenceAccesors>(
     seqs: Vec<T>,
 ) -> Result<impl SequenceAccesors, SeqError> {
     let order = seqs
-        .get(0)
+        .first()
         .unwrap()
         .iter()
         .map(|x| x.id())
         .collect::<Vec<&str>>();
     let mut result = seqs
-        .get(0)
+        .first()
         .unwrap()
         .iter()
         .map(|x| (x.id(), vec![]))
@@ -52,7 +53,7 @@ pub fn concat<T: SequenceAccesors>(
                 }
             }
         }
-        if used.len() > 0 {
+        if !used.is_empty() {
             let a = used.iter().next().unwrap();
             return Err(SeqError::MissingID(String::from(**a)));
         }

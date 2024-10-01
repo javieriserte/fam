@@ -31,7 +31,7 @@ impl Degap<AnnotatedSequence> for AnnotatedSequence {
       .map(
         |x| x.clone().into_iter().filter(char_filter).collect()
       )
-      .unwrap_or(vec![]);
+      .unwrap_or_default();
     AnnotatedSequence::new(self.id().to_string(), seq)
   }
 }
