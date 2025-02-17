@@ -16,6 +16,59 @@ use std::path::Path;
 
 use std::io::{self};
 
+pub struct FastaReaderFromLines {
+  local_lines: Vec<String>,
+  end_of_input: bool
+}
+
+impl FastaReaderFromLines {
+  pub fn new() -> FastaReaderFromLines {
+    FastaReaderFromLines {
+      local_lines: vec![],
+      end_of_input: false
+    }
+  }
+
+  pub fn add_line(&mut self, line: Option<String>) {
+    if let Some(l) = line {
+      self.local_lines.push(l);
+    } else {
+      self.end_of_input = true;
+    }
+  }
+
+  fn build(&mut self, end:usize) -> Option<AnnotatedSequence> {
+    if end <= 1 {
+      return None;
+    }
+    let id = self.local_lines[0].split_off(1);
+    let seq = self.local_lines[1..end].join("");
+    self.local_lines.drain(0..end);
+    Some(
+      AnnotatedSequence::from_string(id, seq)
+    )
+  }
+
+  pub fn try_build(&mut self) -> Option<AnnotatedSequence> {
+    match self.local_lines.last() {
+      Some(line) if line.starts_with(">") => {
+        let end = self.local_lines.len() - 1;
+        self.build(end)
+      }
+      Some(_) if self.end_of_input => {
+        let end = self.local_lines.len();
+        self.build(end)
+      }
+      Some(_) => None,
+      None => None
+    }
+  }
+
+  pub fn consumed(&self) -> bool {
+    self.local_lines.is_empty() && self.end_of_input
+  }
+}
+
 pub fn sequence_collection_from_bufread<T: BufRead>(
   mut reader: T,
 ) -> Result<SequenceCollection, Error> {
@@ -130,5 +183,20 @@ mod test {
             *msa.get(2).unwrap().seq().unwrap(),
             vec!['A', 'T', 'G', 'T', 'A', 'G']
         );
+    }
+    #[test]
+    fn test_fastareader_from_lines() {
+        // FIXME: Make tests
+        use crate::fastaio::FastaReaderFromLines;
+        let mut fr = FastaReaderFromLines::new();
+        fr.add_line(Some(">S1".to_string()));
+        fr.add_line(Some("ATCTCG".to_string()));
+        fr.add_line(Some(">S2".to_string()));
+        fr.add_line(Some("TCT".to_string()));
+        fr.add_line(Some("CGA".to_string()));
+        fr.add_line(Some(">S3".to_string()));
+        fr.add_line(Some("ATG".to_string()));
+        fr.add_line(Some("TAG".to_string()));
+
     }
 }
