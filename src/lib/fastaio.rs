@@ -49,15 +49,23 @@ impl FastaReaderFromLines {
     )
   }
 
+  pub fn first_id_index(&self) -> usize {
+    self
+      .local_lines[1..]
+      .iter()
+      .position(|x| x.starts_with(">"))
+      .unwrap_or(self.local_lines.len()-1)
+  }
+
   pub fn try_build(&mut self) -> Option<AnnotatedSequence> {
     match self.local_lines.last() {
-      Some(line) if line.starts_with(">") => {
-        let end = self.local_lines.len() - 1;
-        self.build(end)
+      Some(line) if line.starts_with( ">") => {
+        let end = self.first_id_index();
+        self.build(end+1)
       }
       Some(_) if self.end_of_input => {
-        let end = self.local_lines.len();
-        self.build(end)
+        let end = self.first_id_index();
+        self.build(end+1)
       }
       Some(_) => None,
       None => None
@@ -185,7 +193,7 @@ mod test {
         );
     }
     #[test]
-    fn test_fastareader_from_lines() {
+    fn test_fastareader_from_lines_all_together() {
         // FIXME: Make tests
         use crate::fastaio::FastaReaderFromLines;
         let mut fr = FastaReaderFromLines::new();
@@ -197,6 +205,42 @@ mod test {
         fr.add_line(Some(">S3".to_string()));
         fr.add_line(Some("ATG".to_string()));
         fr.add_line(Some("TAG".to_string()));
-
+        fr.add_line(None);
+        assert_eq!(fr.try_build().unwrap().id(), "S1");
+        assert_eq!(fr.try_build().unwrap().id(), "S2");
+        assert_eq!(fr.try_build().unwrap().id(), "S3");
+        assert_eq!(fr.try_build(), None);
+    }#[test]
+    fn test_fastareader_from_lines_one_by_one() {
+        // FIXME: Make tests
+        use crate::fastaio::FastaReaderFromLines;
+        let mut fr = FastaReaderFromLines::new();
+        fr.add_line(Some(">S1".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some("ATCTCG".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some(">S2".to_string()));
+        assert_eq!(fr.try_build().unwrap().id(), "S1");
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some("TCT".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some("CGA".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some(">S3".to_string()));
+        assert_eq!(fr.try_build().unwrap().id(), "S2");
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some("ATG".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(Some("TAG".to_string()));
+        assert_eq!(fr.try_build(), None);
+        assert_eq!(fr.consumed(), false);
+        fr.add_line(None);
+        assert_eq!(fr.try_build().unwrap().id(), "S3");
+        assert_eq!(fr.consumed(), true);
     }
 }
