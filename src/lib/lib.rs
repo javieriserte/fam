@@ -23,6 +23,11 @@ pub mod seqs {
     use std::iter::{IntoIterator, Iterator};
     use std::collections::hash_map::Entry::{Vacant, Occupied};
 
+    use crate::fastaio::{
+        FastaReaderFromLines,
+        SequenceReader
+    };
+
     #[derive(Debug)]
     pub enum SeqError {
         DuplicatedId(String),
@@ -772,41 +777,18 @@ pub mod seqs {
 
     pub struct BufferedSeqCollectionFromRead {
         buffer: RefCell<Option<Box<dyn BufRead>>>,
-        // buffer: RefCell<Option<&'a mut dyn BufRead>>,
-        current_seq: RefCell<Vec<String>>,
-        current_id: RefCell<Option<String>>,
-        consumed: RefCell<bool>
+        reader: RefCell<FastaReaderFromLines>
     }
 
     impl BufferedSeqCollectionFromRead {
         pub fn new(buffer: Box<dyn BufRead>) -> Self {
             BufferedSeqCollectionFromRead {
                 buffer: RefCell::new(Some(buffer)),
-                current_seq: RefCell::new(vec![]),
-                current_id: RefCell::new(None),
-                consumed: RefCell::new(false)
+                reader: RefCell::new(FastaReaderFromLines::new())
             }
         }
-        pub fn set_consumed(&self, consumed: bool) {
-            self.consumed.replace(consumed);
-        }
         pub fn is_consumed(&self) -> bool {
-            return self.consumed.borrow().clone()
-        }
-        pub fn add_line_to_sequence(&self, line: String) {
-            self.current_seq.borrow_mut().push(line)
-        }
-        pub fn get_current_seq(&self) -> String {
-            self.current_seq.borrow().join("")
-        }
-        pub fn clear_current_seq(&self) {
-            self.current_seq.borrow_mut().clear()
-        }
-        pub fn set_current_id(&self, id: String) {
-            self.current_id.replace(Some(id));
-        }
-        pub fn take_current_id(&self) -> Option<String> {
-            self.current_id.take()
+            return self.reader.borrow().consumed();
         }
         pub fn next_line(&self) -> Option<String> {
             let mut line = String::new();
@@ -823,36 +805,48 @@ pub mod seqs {
 
     impl BufferedSeqCollection for BufferedSeqCollectionFromRead {
         fn next_sequence(&self) -> Option<AnnotatedSequence> {
-            if self.is_consumed() {
+            let mut reader = self.reader.borrow_mut();
+            if reader.consumed() {
                 return None;
             }
             loop {
-                let mut returning: Option<AnnotatedSequence> = None;
                 let next_line = self.next_line();
-                let eof = next_line.is_none();
-                let mut line = next_line.unwrap_or_default();
-                if eof || line.starts_with(">") {
-                    if let Some(id) = self.take_current_id() {
-                        let ann_seq = AnnotatedSequence::from_string(
-                            id,
-                            self.get_current_seq(),
-                        );
-                        self.set_consumed(eof);
-                        returning = Some(ann_seq);
-                    };
-                    self.clear_current_seq();
-                    if line.starts_with(">") {
-                        line.truncate(line.trim_end().len());
-                        self.set_current_id(line.split_off(1));
-                    }
-                } else {
-                    line.truncate(line.trim_end().len());
-                    self.add_line_to_sequence(line);
+                match next_line {
+                    Some(line) => reader.add_line(line),
+                    None => reader.end_input(),
                 }
-                if returning.is_some() || eof {
-                    return returning
+                let returning = reader.try_build();
+                if returning.is_some() || reader.consumed() {
+                    return returning;
                 }
             }
+            // loop {
+            //     let mut returning: Option<AnnotatedSequence> = None;
+            //     let next_line = self.next_line();
+            //     let eof = next_line.is_none();
+            //     let mut line = next_line.unwrap_or_default();
+            //     if eof || line.starts_with(">") {
+            //         if let Some(id) = self.take_current_id() {
+            //             let ann_seq = AnnotatedSequence::from_string(
+            //                 id,
+            //                 self.get_current_seq(),
+            //             );
+            //             self.set_consumed(eof);
+            //             returning = Some(ann_seq);
+            //         };
+            //         self.clear_current_seq();
+            //         if line.starts_with(">") {
+            //             line.truncate(line.trim_end().len());
+            //             self.set_current_id(line.split_off(1));
+            //         }
+            //     } else {
+            //         line.truncate(line.trim_end().len());
+            //         self.add_line_to_sequence(line);
+            //     }
+            //     if returning.is_some() || eof {
+            //         return returning
+            //     }
+            // }
         }
     }
 
@@ -1238,6 +1232,7 @@ pub mod seqs {
 
 #[cfg(test)]
 mod test{
+    use crate::seqs::BufferedSeqCollection;
     use crate::seqs::SequenceCollection;
     use crate::seqs::Alignment;
     use crate::seqs::AnnotatedSequence;
@@ -1409,5 +1404,23 @@ mod test{
         let msa = sample_display_msa();
         let display_test = format!("{}", msa);
         assert_eq!(display_test, expected);
+    }
+    #[test]
+    fn test_buffered_seq_collection_from_read() {
+        use std::io::Cursor;
+        let buffer = Cursor::new(
+            ">S1\nATC\n>S2\nATG\n>S3\nATT\n");
+        let bsc = crate::seqs::BufferedSeqCollectionFromRead::new(
+            Box::new(buffer)
+        );
+        let seq1 = bsc.next_sequence().unwrap();
+        assert_eq!(seq1.id(), "S1");
+        assert_eq!(seq1.seq_as_string(), "ATC");
+        let seq2 = bsc.next_sequence().unwrap();
+        assert_eq!(seq2.id(), "S2");
+        assert_eq!(seq2.seq_as_string(), "ATG");
+        let seq3 = bsc.next_sequence().unwrap();
+        assert_eq!(seq3.id(), "S3");
+        assert_eq!(seq3.seq_as_string(), "ATT");
     }
 }

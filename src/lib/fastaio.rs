@@ -5,6 +5,7 @@ use crate::seqs::{
   SequenceCollection,
   BufferedSeqCollection
 };
+use std::collections::VecDeque;
 use std::io::Error;
 use std::io::Write;
 
@@ -16,6 +17,14 @@ use std::path::Path;
 
 use std::io::{self};
 
+
+pub trait SequenceReader {
+  fn try_build(&mut self) -> Option<AnnotatedSequence>;
+  fn consumed(&self) -> bool;
+  fn add_line(&mut self, line: String);
+  fn end_input(&mut self);
+}
+
 pub struct FastaReaderFromLines {
   local_lines: Vec<String>,
   end_of_input: bool
@@ -26,14 +35,6 @@ impl FastaReaderFromLines {
     FastaReaderFromLines {
       local_lines: vec![],
       end_of_input: false
-    }
-  }
-
-  pub fn add_line(&mut self, line: Option<String>) {
-    if let Some(l) = line {
-      self.local_lines.push(l);
-    } else {
-      self.end_of_input = true;
     }
   }
 
@@ -56,8 +57,19 @@ impl FastaReaderFromLines {
       .position(|x| x.starts_with(">"))
       .unwrap_or(self.local_lines.len()-1)
   }
+}
 
-  pub fn try_build(&mut self) -> Option<AnnotatedSequence> {
+impl SequenceReader for FastaReaderFromLines {
+
+  fn add_line(&mut self, line: String) {
+    self.local_lines.push(line.trim_end().to_string());
+  }
+
+  fn end_input(&mut self) {
+    self.end_of_input = true;
+  }
+
+  fn try_build(&mut self) -> Option<AnnotatedSequence> {
     match self.local_lines.last() {
       Some(line) if line.starts_with( ">") => {
         let end = self.first_id_index();
@@ -72,8 +84,65 @@ impl FastaReaderFromLines {
     }
   }
 
-  pub fn consumed(&self) -> bool {
+  fn consumed(&self) -> bool {
     self.local_lines.is_empty() && self.end_of_input
+  }
+}
+
+pub struct PlainReaderFromLines {
+  local_lines: VecDeque<String>,
+  end_of_input: bool,
+  last_index: usize
+}
+
+impl PlainReaderFromLines {
+  pub fn new() -> PlainReaderFromLines {
+    PlainReaderFromLines {
+      local_lines: VecDeque::new(),
+      end_of_input: false,
+      last_index: 0
+    }
+  }
+}
+
+impl SequenceReader for PlainReaderFromLines {
+
+  fn add_line(&mut self, line: String) {
+    self.local_lines.push_back(line.trim_end().to_string());
+  }
+
+  fn end_input(&mut self) {
+    self.end_of_input = true;
+  }
+
+  fn try_build(&mut self) -> Option<AnnotatedSequence> {
+    match self.local_lines.pop_front() {
+      Some(line) => {
+        self.last_index += 1;
+        Some(AnnotatedSequence::from_string(
+          format!("Seq_{}", self.last_index),
+          line
+        ))
+      }
+      None => None
+    }
+  }
+
+  fn consumed(&self) -> bool {
+    self.local_lines.is_empty() && self.end_of_input
+  }
+}
+
+
+pub enum InputFormats {
+  Fasta,
+  Plain
+}
+
+pub fn reader_for(format: InputFormats) -> Box<dyn SequenceReader> {
+  match format {
+    InputFormats::Fasta => Box::new(FastaReaderFromLines::new()),
+    InputFormats::Plain => unimplemented!()
   }
 }
 
@@ -81,29 +150,18 @@ pub fn sequence_collection_from_bufread<T: BufRead>(
   mut reader: T,
 ) -> Result<SequenceCollection, Error> {
   let mut msa = SequenceCollection::new();
-  let mut current_sequence: Vec<String> = vec![];
-  let mut current_id: Option<String> = None;
+  let mut fr = reader_for(InputFormats::Fasta);
   loop {
     let mut line = String::new();
     let len = reader.read_line(&mut line)?;
-    if len == 0 || line.starts_with(">") {
-      if let Some(id) = &current_id {
-        let ann_seq = AnnotatedSequence::from_string(
-          id.clone(),
-          current_sequence.join(""),
-        );
-        msa.add(ann_seq)?
-      };
-      current_sequence.clear();
-      if line.starts_with(">") {
-        line.truncate(line.trim_end().len());
-        current_id = Some(line.split_off(1));
-      }
-    } else {
-      line.truncate(line.trim_end().len());
-      current_sequence.push(line);
+    match len {
+      0 => fr.end_input(),
+      _ => fr.add_line(line)
+    };
+    if let Some(annseq) = fr.try_build() {
+      msa.add(annseq)?;
     }
-    if len == 0 {
+    if fr.consumed() {
       break;
     }
   }
@@ -169,6 +227,7 @@ pub fn write_buffered_sequence_collection<T1: BufferedSeqCollection, T2: Write>(
 mod test {
     #[allow(unused_imports)]
     use crate::fastaio::sequence_collection_from_bufread;
+    use crate::fastaio::PlainReaderFromLines;
     #[allow(unused_imports)]
     use crate::seqs::{SequenceAccesors, SequenceCollection};
     #[test]
@@ -193,53 +252,105 @@ mod test {
         );
     }
     #[test]
-    fn test_fastareader_from_lines_all_together() {
-        // FIXME: Make tests
+    fn test_plainreader_from_lines_with_eol_chars() {
+        use crate::fastaio::PlainReaderFromLines;
+        use crate::fastaio::SequenceReader;
+        let mut fr = PlainReaderFromLines::new();
+        fr.add_line("ACYACY\n".to_string());
+        fr.end_input();
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_1");
+        assert_eq!(fr.try_build(), None);
+    }
+    #[test]
+    fn test_plainreader_from_lines_all_together() {
+        use crate::fastaio::PlainReaderFromLines;
+        use crate::fastaio::SequenceReader;
+        let mut fr = PlainReaderFromLines::new();
+        fr.add_line("ACYACY\n".to_string());
+        fr.add_line("ACYACY\n".to_string());
+        fr.end_input();
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_1");
+        assert_eq!(fr.try_build().unwrap().seq_as_string(), "ACYACY");
+        assert_eq!(fr.try_build(), None);
+    }
+    #[test]
+    fn test_plainreader_from_lines_one_by_one() {
+        use crate::fastaio::PlainReaderFromLines;
+        use crate::fastaio::SequenceReader;
+        let mut fr = PlainReaderFromLines::new();
+        fr.add_line("ATCTCG".to_string());
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_1");
+        assert_eq!(fr.consumed(), false);
+        fr.add_line("TCT".to_string());
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_2");
+        assert_eq!(fr.consumed(), false);
+        fr.add_line("CGA".to_string());
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_3");
+        assert_eq!(fr.consumed(), false);
+        fr.add_line("CGAHH".to_string());
+        fr.end_input();
+        assert_eq!(fr.try_build().unwrap().id(), "Seq_4");
+        assert_eq!(fr.consumed(), true);
+    }
+    #[test]
+    fn test_fastareader_from_lines_with_eol_chars() {
         use crate::fastaio::FastaReaderFromLines;
+        use crate::fastaio::SequenceReader;
         let mut fr = FastaReaderFromLines::new();
-        fr.add_line(Some(">S1".to_string()));
-        fr.add_line(Some("ATCTCG".to_string()));
-        fr.add_line(Some(">S2".to_string()));
-        fr.add_line(Some("TCT".to_string()));
-        fr.add_line(Some("CGA".to_string()));
-        fr.add_line(Some(">S3".to_string()));
-        fr.add_line(Some("ATG".to_string()));
-        fr.add_line(Some("TAG".to_string()));
-        fr.add_line(None);
+        fr.add_line(">S1\n".to_string());
+        fr.add_line("ATCTCG\r\n".to_string());
+        fr.end_input();
+        assert_eq!(fr.try_build().unwrap().id(), "S1");
+        assert_eq!(fr.try_build(), None);
+    }
+    #[test]
+    fn test_fastareader_from_lines_all_together() {
+        use crate::fastaio::FastaReaderFromLines;
+        use crate::fastaio::SequenceReader;
+        let mut fr = FastaReaderFromLines::new();
+        fr.add_line(">S1".to_string());
+        fr.add_line("ATCTCG".to_string());
+        fr.add_line(">S2".to_string());
+        fr.add_line("TCT".to_string());
+        fr.add_line("CGA".to_string());
+        fr.add_line(">S3".to_string());
+        fr.add_line("ATG".to_string());
+        fr.add_line("TAG".to_string());
+        fr.end_input();
         assert_eq!(fr.try_build().unwrap().id(), "S1");
         assert_eq!(fr.try_build().unwrap().id(), "S2");
         assert_eq!(fr.try_build().unwrap().id(), "S3");
         assert_eq!(fr.try_build(), None);
     }#[test]
     fn test_fastareader_from_lines_one_by_one() {
-        // FIXME: Make tests
         use crate::fastaio::FastaReaderFromLines;
+        use crate::fastaio::SequenceReader;
         let mut fr = FastaReaderFromLines::new();
-        fr.add_line(Some(">S1".to_string()));
+        fr.add_line(">S1".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some("ATCTCG".to_string()));
+        fr.add_line("ATCTCG".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some(">S2".to_string()));
+        fr.add_line(">S2".to_string());
         assert_eq!(fr.try_build().unwrap().id(), "S1");
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some("TCT".to_string()));
+        fr.add_line("TCT".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some("CGA".to_string()));
+        fr.add_line("CGA".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some(">S3".to_string()));
+        fr.add_line(">S3".to_string());
         assert_eq!(fr.try_build().unwrap().id(), "S2");
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some("ATG".to_string()));
+        fr.add_line("ATG".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(Some("TAG".to_string()));
+        fr.add_line("TAG".to_string());
         assert_eq!(fr.try_build(), None);
         assert_eq!(fr.consumed(), false);
-        fr.add_line(None);
+        fr.end_input();
         assert_eq!(fr.try_build().unwrap().id(), "S3");
         assert_eq!(fr.consumed(), true);
     }
