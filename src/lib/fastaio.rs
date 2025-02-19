@@ -133,10 +133,20 @@ impl SequenceReader for PlainReaderFromLines {
   }
 }
 
-
+#[derive(Debug, Clone, Copy)]
 pub enum InputFormats {
   Fasta,
   Plain
+}
+
+pub fn format_from_string(format: &str) -> Result<InputFormats, Error> {
+  match format.to_lowercase().as_str() {
+    "fasta" => Ok(InputFormats::Fasta),
+    "plain" => Ok(InputFormats::Plain),
+    _ => Err(
+      Error::new(io::ErrorKind::InvalidInput, "Invalid format")
+    )
+  }
 }
 
 pub fn reader_for(format: InputFormats) -> Box<dyn SequenceReader> {
@@ -148,9 +158,10 @@ pub fn reader_for(format: InputFormats) -> Box<dyn SequenceReader> {
 
 pub fn sequence_collection_from_bufread<T: BufRead>(
   mut reader: T,
+  format: InputFormats
 ) -> Result<SequenceCollection, Error> {
   let mut msa = SequenceCollection::new();
-  let mut fr = reader_for(InputFormats::Fasta);
+  let mut fr = reader_for(format);
   loop {
     let mut line = String::new();
     let len = reader.read_line(&mut line)?;
@@ -170,28 +181,36 @@ pub fn sequence_collection_from_bufread<T: BufRead>(
 
 pub fn sequence_collection_from_file(
     path: &Path,
+    format: InputFormats
 ) -> Result<SequenceCollection, Error> {
     let f = File::open(path)?;
     let reader = BufReader::new(f);
-    sequence_collection_from_bufread(reader)
+    sequence_collection_from_bufread(reader, format)
 }
 
-pub fn sequence_collection_from_stdin() -> Result<SequenceCollection, Error> {
-    sequence_collection_from_bufread(io::stdin().lock())
+pub fn sequence_collection_from_stdin(
+  format: InputFormats
+) -> Result<SequenceCollection, Error> {
+    sequence_collection_from_bufread(io::stdin().lock(), format)
 }
 
-pub fn buffered_sequence_collection_from_stdin()
+pub fn buffered_sequence_collection_from_stdin(format: InputFormats)
   -> Result<BufferedSeqCollectionFromRead, Error> {
     let buffer = io::stdin().lock();
-    Ok(BufferedSeqCollectionFromRead::new(Box::new(buffer)))
+    Ok(BufferedSeqCollectionFromRead::new(Box::new(buffer), format))
 }
 
 pub fn buffered_sequence_collection_from_file(
-  path: &Path
+  path: &Path,
+  format: InputFormats
 ) -> Result<BufferedSeqCollectionFromRead, Error> {
     let f = File::open(path)?;
     let reader = BufReader::new(f);
-    Ok(BufferedSeqCollectionFromRead::new(Box::new(reader)))
+    Ok(BufferedSeqCollectionFromRead::new(
+      Box::new(reader),
+      format
+    )
+  )
 }
 
 pub fn write_sequence_collection<T1: SequenceAccesors, T2: Write>(
@@ -227,29 +246,32 @@ pub fn write_buffered_sequence_collection<T1: BufferedSeqCollection, T2: Write>(
 mod test {
     #[allow(unused_imports)]
     use crate::fastaio::sequence_collection_from_bufread;
-    use crate::fastaio::PlainReaderFromLines;
     #[allow(unused_imports)]
     use crate::seqs::{SequenceAccesors, SequenceCollection};
     #[test]
     fn test_sequence_collection_from_bufread_when_ok() {
-        let input = ">S1\r\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
-        let b = input.as_bytes();
-        let msa = sequence_collection_from_bufread(b).unwrap();
-        assert_eq!(msa.get(0).unwrap().id(), "S1");
-        assert_eq!(
-            *msa.get(0).unwrap().seq().unwrap(),
-            vec!['A', 'T', 'C', 'T', 'C', 'G']
-        );
-        assert_eq!(msa.get(1).unwrap().id(), "S2");
-        assert_eq!(
-            *msa.get(1).unwrap().seq().unwrap(),
-            vec!['T', 'C', 'T', 'C', 'G', 'A']
-        );
-        assert_eq!(msa.get(2).unwrap().id(), "S3");
-        assert_eq!(
-            *msa.get(2).unwrap().seq().unwrap(),
-            vec!['A', 'T', 'G', 'T', 'A', 'G']
-        );
+      use crate::fastaio::InputFormats;
+      let input = ">S1\r\nATCTCG\n>S2\nTCT\nCGA\r\n>S3\nATG\r\nTAG";
+      let b = input.as_bytes();
+      let msa = sequence_collection_from_bufread(
+        b,
+        InputFormats::Fasta
+      ).unwrap();
+      assert_eq!(msa.get(0).unwrap().id(), "S1");
+      assert_eq!(
+          *msa.get(0).unwrap().seq().unwrap(),
+          vec!['A', 'T', 'C', 'T', 'C', 'G']
+      );
+      assert_eq!(msa.get(1).unwrap().id(), "S2");
+      assert_eq!(
+          *msa.get(1).unwrap().seq().unwrap(),
+          vec!['T', 'C', 'T', 'C', 'G', 'A']
+      );
+      assert_eq!(msa.get(2).unwrap().id(), "S3");
+      assert_eq!(
+          *msa.get(2).unwrap().seq().unwrap(),
+          vec!['A', 'T', 'G', 'T', 'A', 'G']
+      );
     }
     #[test]
     fn test_plainreader_from_lines_with_eol_chars() {

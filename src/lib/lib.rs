@@ -24,8 +24,7 @@ pub mod seqs {
     use std::collections::hash_map::Entry::{Vacant, Occupied};
 
     use crate::fastaio::{
-        FastaReaderFromLines,
-        SequenceReader
+        reader_for, InputFormats, SequenceReader
     };
 
     #[derive(Debug)]
@@ -777,14 +776,15 @@ pub mod seqs {
 
     pub struct BufferedSeqCollectionFromRead {
         buffer: RefCell<Option<Box<dyn BufRead>>>,
-        reader: RefCell<FastaReaderFromLines>
+        reader: RefCell<Box<dyn SequenceReader>>,
     }
 
     impl BufferedSeqCollectionFromRead {
-        pub fn new(buffer: Box<dyn BufRead>) -> Self {
+        pub fn new(buffer: Box<dyn BufRead>, format: InputFormats) -> Self {
+            let reader = reader_for(format);
             BufferedSeqCollectionFromRead {
                 buffer: RefCell::new(Some(buffer)),
-                reader: RefCell::new(FastaReaderFromLines::new())
+                reader: RefCell::new(reader)
             }
         }
         pub fn is_consumed(&self) -> bool {
@@ -1408,10 +1408,12 @@ mod test{
     #[test]
     fn test_buffered_seq_collection_from_read() {
         use std::io::Cursor;
+        use crate::fastaio::InputFormats;
         let buffer = Cursor::new(
             ">S1\nATC\n>S2\nATG\n>S3\nATT\n");
         let bsc = crate::seqs::BufferedSeqCollectionFromRead::new(
-            Box::new(buffer)
+            Box::new(buffer),
+            InputFormats::Fasta
         );
         let seq1 = bsc.next_sequence().unwrap();
         assert_eq!(seq1.id(), "S1");

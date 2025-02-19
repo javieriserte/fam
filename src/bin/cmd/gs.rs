@@ -3,11 +3,15 @@ use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 use clap::ArgMatches;
+use famlib::fastaio::format_from_string;
 
 pub struct Gapstrip {}
 
 impl Gapstrip {
-    pub fn gapstrip_command(fs: DataSource, fo: DataSink) -> io::Result<()> {
+    pub fn gapstrip_command(
+        fs: DataSource,
+        fo: DataSink
+    ) -> io::Result<()> {
         let input = fs.get_sequence_collection().unwrap();
         let msa = match input.to_msa() {
             Ok(x) => x,
@@ -26,7 +30,16 @@ impl Gapstrip {
 impl Command for Gapstrip {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(gsmatches) = matches.subcommand_matches("gapstrip") {
-            let input = datasource(gsmatches);
+            let format = match gsmatches.value_of("format") {
+                Some(format) => {
+                    format_from_string(format)?
+                },
+                None => {
+                    eprintln!("[WARN] No format provided, assuming fasta");
+                    format_from_string("fasta")?
+                }
+            };
+            let input = datasource(gsmatches, format);
             let output = datasink(gsmatches);
             Self::gapstrip_command(input, output)?
         };

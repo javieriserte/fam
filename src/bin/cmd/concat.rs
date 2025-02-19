@@ -3,6 +3,7 @@ use crate::data::{DataSink, DataSource};
 use super::{Command, datasink};
 use clap::ArgMatches;
 use famlib::merge::concat;
+use famlib::fastaio::format_from_string;
 
 pub struct Concat {}
 
@@ -22,9 +23,21 @@ impl Concat {
 impl Command for Concat {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(m) = matches.subcommand_matches("concat") {
+            let format = match m.value_of("format") {
+                Some(format) => {
+                    format_from_string(format)?
+                },
+                None => {
+                    eprintln!("[WARN] No format provided, assuming fasta");
+                    format_from_string("fasta")?
+                }
+            };
             let inputs = m.values_of("input").unwrap();
-            let files: Vec<DataSource> =
-            inputs.map(|x| DataSource::from(x)).collect();
+            let files: Vec<DataSource> = inputs
+                .map(
+                    |x| DataSource::from(x, format)
+                )
+                .collect();
             let sink = datasink(m);
             return Self::concat_command(files, sink);
         }

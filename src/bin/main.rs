@@ -3,7 +3,20 @@ mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
 use cmd::{
-    collect::Collect, concat::Concat, degap::Degap, dimension::Dimension, edit::Edit, filter::Filter, gs::Gapstrip, join::Join, onepixel::OnePixel, pad::PadWithGapsCommand, pop::Pop, random::Random, remove::Remove, Command
+    collect::Collect,
+    concat::Concat,
+    degap::Degap,
+    dimension::Dimension,
+    edit::Edit,
+    filter::Filter,
+    gs::Gapstrip,
+    join::Join,
+    onepixel::OnePixel,
+    pad::PadWithGapsCommand,
+    pop::Pop,
+    random::Random,
+    remove::Remove,
+    Command
 };
 use std::io;
 
@@ -23,6 +36,13 @@ fn add_dimensions_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("expanded")
                     .help("Show width of all sequences")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return new_app;
 }
@@ -36,6 +56,13 @@ fn add_collect_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .help("Output file")
                     .takes_value(true)
                     .required(true)
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
             )
     );
     return app
@@ -58,6 +85,13 @@ fn add_gapstrip_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("out")
                     .takes_value(true)
                     .help("Output file to be gapstripped")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
             )
     );
     return app;
@@ -88,6 +122,13 @@ fn add_pop_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .required(true)
                     .help("The Id of the sequence to be popped")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return app;
 }
@@ -110,6 +151,13 @@ fn add_join_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("out")
                     .takes_value(true)
                     .help("Output file")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
             )
     );
     return app;
@@ -134,6 +182,13 @@ fn add_concat_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("out")
                     .takes_value(true)
                     .help("Output file")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
             )
     );
     return app;
@@ -173,20 +228,19 @@ fn add_remove_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .min_values(1)
                     .help("The id of the rows to be deleted")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return app;
 }
 
-fn add_edit_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
-        SubCommand::with_name("edit")
-            .about("Edit MSA content")
-    );
-    return app;
-}
-
-fn add_replace_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
+fn add_replace_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+    let edit = edit.subcommand(
         SubCommand::with_name("replace")
             .arg(
                 Arg::with_name("input")
@@ -219,12 +273,19 @@ fn add_replace_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .min_values(1)
                     .help("The replacement content of the edit cells")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
-    return app;
+    return edit;
 }
 
-fn add_insert_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
+fn add_insert_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+    let edit = edit.subcommand(
         SubCommand::with_name("insert")
             .arg(
                 Arg::with_name("input")
@@ -257,12 +318,19 @@ fn add_insert_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .min_values(1)
                     .help("The content to be inserted.")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
-    return app;
+    return edit;
 }
 
-fn add_delete_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
+fn add_delete_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+    let edit = edit.subcommand(
         SubCommand::with_name("delete")
             .arg(
                 Arg::with_name("input")
@@ -302,9 +370,27 @@ fn add_delete_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .takes_value(true)
                     .help(".")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
+    return edit;
+}
+
+fn add_edit_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let edit = SubCommand::with_name("edit")
+        .about("Edit MSA content");
+    let edit = add_replace_subcommand(edit);
+    let edit = add_insert_subcommand(edit);
+    let edit = add_delete_subcommand(edit);
+    let app = app.subcommand(edit);
     return app;
 }
+
 
 fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     let app = app.subcommand(
@@ -334,6 +420,13 @@ fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                             .takes_value(false)
                             .help("Keep gaps in a fixed position")
                     )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Specify the input format: [Fasta, Plain]")
+                            .default_value("fasta")
+                    )
             )
             .subcommand(
                 SubCommand::with_name("rows")
@@ -352,6 +445,13 @@ fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                             .takes_value(true)
                             .help("The output file")
                     )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Specify the input format: [Fasta, Plain]")
+                            .default_value("fasta")
+                    )
             )
             .subcommand(
                 SubCommand::with_name("cols")
@@ -369,6 +469,13 @@ fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                             .long("out")
                             .takes_value(true)
                             .help("The output file")
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Specify the input format: [Fasta, Plain]")
+                            .default_value("fasta")
                     )
             )
     );
@@ -414,6 +521,13 @@ fn app_plot_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .default_value("1")
                     .help("Keep gaps in a fixed position")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return app;
 }
@@ -458,6 +572,13 @@ fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .takes_value(false)
                     .help("Exclude the matching sequences")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return app;
 }
@@ -486,6 +607,13 @@ fn add_degap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .long("dots")
                     .takes_value(false)
                     .help("Accepts dots as valid gaps")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
             )
     );
     return app;
@@ -516,13 +644,20 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     .takes_value(true)
                     .help("The final width of the sequences")
             )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
     );
     return app;
 }
 
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
-        .version("0.0.7")
+        .version("0.0.8")
         .author("Javier A. Iserte <javiserte@gmail.com>")
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app);
@@ -549,9 +684,9 @@ pub fn main() -> io::Result<()> {
     let matches = app.get_matches();
     let commands: Vec<Box<dyn Command>> = vec![
         Box::new(Dimension{}),
+        Box::new(Collect{}),
         Box::new(Gapstrip{}),
         Box::new(OnePixel{}),
-        Box::new(Collect{}),
         Box::new(Concat{}),
         Box::new(Remove{}),
         Box::new(Random{}),

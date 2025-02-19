@@ -1,5 +1,6 @@
 use std::io;
 use clap::ArgMatches;
+use famlib::fastaio::InputFormats;
 
 use crate::data::{DataSink, DataSource};
 pub mod gs;
@@ -31,9 +32,9 @@ pub fn datasink(matches: &ArgMatches) -> DataSink {
 }
 
 /// Creates a DataSource struct from the commandline arguments
-fn datasource(matches: &ArgMatches) -> DataSource {
+fn datasource(matches: &ArgMatches, format: InputFormats) -> DataSource {
     match matches.value_of("input") {
-        None => DataSource::StdIn,
-        Some(x) => DataSource::from(&x),
+        None => DataSource::StdIn(format),
+        Some(x) => DataSource::from(&x, format),
     }
 }

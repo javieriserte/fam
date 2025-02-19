@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Current Version
 
-- Version 0.0.7 - 2024-09-17
+- Version 0.0.8 - 2025-02-19
 
 ## New features
+
+- [#26] Added support for plain text files as input
+
+## Version 0.0.7 - 2024-09-17
 
 - [#25] Add pad subcommand
 

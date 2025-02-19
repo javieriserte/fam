@@ -3,7 +3,7 @@ use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 use clap::{ArgMatches, Values};
-use famlib::{edit_msa::EditMSA, seqs::SequenceAccesors};
+use famlib::{edit_msa::EditMSA, fastaio::format_from_string, seqs::SequenceAccesors};
 
 pub struct Remove {}
 
@@ -11,11 +11,11 @@ pub struct Remove {}
 impl Remove {
     /// Remove Rows and columns from a MSA
     pub fn remove_command(
-            fs: DataSource,
-            fo: DataSink,
-            rows: Vec<usize>,
-            columns: Vec<usize>)
-            -> io::Result<()> {
+        fs: DataSource,
+        fo: DataSink,
+        rows: Vec<usize>,
+        columns: Vec<usize>,
+    ) -> io::Result<()> {
         let mut input = fs
             .get_sequence_collection()
             .unwrap();
@@ -50,7 +50,16 @@ impl Remove {
 impl Command for Remove {
     fn run(&self, matches: &ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("remove") {
-            let input = datasource(m);
+            let format = match m.value_of("format") {
+                Some(format) => {
+                    format_from_string(format)?
+                },
+                None => {
+                    eprintln!("[WARN] No format provided, assuming fasta");
+                    format_from_string("fasta")?
+                }
+            };
+            let input = datasource(m, format);
             let sink = datasink(m);
             let val_to_vec = |x:Values| x.filter_map(|y|
                 y.parse::<usize>().ok())
@@ -62,7 +71,12 @@ impl Command for Remove {
             let cols = m
                 .values_of("cols")
                 .map_or_else(Vec::new, |x| val_to_vec(x));
-            Self::remove_command(input, sink, rows, cols)?
+            Self::remove_command(
+                input,
+                sink,
+                rows,
+                cols,
+            )?
         }
         Ok(())
     }

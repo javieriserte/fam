@@ -1,6 +1,6 @@
 use std::io;
 
-use famlib::filter::FilterBufferedSequenceCollection;
+use famlib::{fastaio::format_from_string, filter::FilterBufferedSequenceCollection};
 use crate::data::{DataSink, DataSource};
 use super::{datasink, datasource, Command};
 
@@ -32,7 +32,16 @@ impl Filter {
 impl Command for Filter {
     fn run (&self, matches: &clap::ArgMatches) -> io::Result<()> {
         if let Some(m) = matches.subcommand_matches("filter") {
-            let input = datasource(m);
+            let format = match m.value_of("format") {
+                Some(format) => {
+                    format_from_string(format)?
+                },
+                None => {
+                    eprintln!("[WARN] No format provided, assuming fasta");
+                    format_from_string("fasta")?
+                }
+            };
+            let input = datasource(m, format);
             let output = datasink(m);
             let case_insentitive = m.is_present("ignore_case");
             let keep = !m.is_present("exclude");

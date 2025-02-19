@@ -1,4 +1,5 @@
 use std::io::{self, ErrorKind};
+use famlib::fastaio::format_from_string;
 use famlib::seqs::SequenceAccesors;
 use famlib::edit::EditSequence;
 use crate::data::{DataSink, DataSource};
@@ -8,11 +9,11 @@ pub struct Edit{}
 
 impl Edit {
     pub fn edit_replace(
-            fs: DataSource,
-            fo: DataSink,
-            at: Vec<usize>,
-            content: Vec<&str>)
-            -> io::Result<()> {
+        fs: DataSource,
+        fo: DataSink,
+        at: Vec<usize>,
+        content: Vec<&str>
+    ) -> io::Result<()> {
         let mut input = fs.get_sequence_collection().unwrap();
         let col_idx = at[1]-1;
         for (x, c) in content.iter().enumerate() {
@@ -42,11 +43,11 @@ impl Edit {
         fo.write_fasta(&input)
     }
     pub fn edit_insert(
-            fs: DataSource,
-            fo: DataSink,
-            at: Vec<usize>,
-            content: Vec<&str>)
-            -> io::Result<()> {
+        fs: DataSource,
+        fo: DataSink,
+        at: Vec<usize>,
+        content: Vec<&str>
+    ) -> io::Result<()> {
         let mut input = fs.get_sequence_collection().unwrap();
         let col_idx = at[1]-1;
         for (x, c) in content.iter().enumerate() {
@@ -104,7 +105,16 @@ impl Command for Edit {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("edit") {
             if let Some(m1) = m.subcommand_matches("replace") {
-                let input = datasource(m1);
+                let format = match m1.value_of("format") {
+                    Some(format) => {
+                        format_from_string(format)?
+                    },
+                    None => {
+                        eprintln!("[WARN] No format provided, assuming fasta");
+                        format_from_string("fasta")?
+                    }
+                };
+                let input = datasource(m1, format);
                 let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()
@@ -129,7 +139,16 @@ impl Command for Edit {
                 Self::edit_replace(input, output, at, content)?
             };
             if let Some(m1) = m.subcommand_matches("insert") {
-                let input = datasource(m1);
+                let format = match m1.value_of("format") {
+                    Some(format) => {
+                        format_from_string(format)?
+                    },
+                    None => {
+                        eprintln!("[WARN] No format provided, assuming fasta");
+                        format_from_string("fasta")?
+                    }
+                };
+                let input = datasource(m1, format);
                 let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()
@@ -152,7 +171,16 @@ impl Command for Edit {
                 Self::edit_insert(input, output, at, content)?
             };
             if let Some(m1) = m.subcommand_matches("delete") {
-                let input = datasource(m1);
+                let format = match m1.value_of("format") {
+                    Some(format) => {
+                        format_from_string(format)?
+                    },
+                    None => {
+                        eprintln!("[WARN] No format provided, assuming fasta");
+                        format_from_string("fasta")?
+                    }
+                };
+                let input = datasource(m1, format);
                 let output = datasink(m1);
                 let at = m1.values_of("at")
                     .unwrap()

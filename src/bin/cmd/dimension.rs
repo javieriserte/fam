@@ -2,13 +2,16 @@
 use std::io::{self, BufWriter, Write, stdout};
 use crate::data::DataSource;
 use super::{Command, datasource};
-use famlib::seqs::SequenceAccesors;
+use famlib::{fastaio::format_from_string, seqs::SequenceAccesors};
 use clap::ArgMatches;
 
 pub struct Dimension {}
 
 impl Dimension {
-    pub fn dimension_command(fs: DataSource, expanded: bool) -> io::Result<()> {
+    pub fn dimension_command(
+        fs: DataSource,
+        expanded: bool
+    ) -> io::Result<()> {
         let seqcol = fs.get_sequence_collection().unwrap();
         let out = stdout();
         let mut writer = BufWriter::new(out.lock());
@@ -40,7 +43,16 @@ impl Dimension {
 impl Command for Dimension {
     fn run(&self, matches: &ArgMatches) -> io::Result<()> {
         if let Some(dimatches) = matches.subcommand_matches("dimensions") {
-            let input = datasource(dimatches);
+            let format = match dimatches.value_of("format") {
+                Some(format) => {
+                    format_from_string(format)?
+                },
+                None => {
+                    eprintln!("[WARN] No format provided, assuming fasta");
+                    format_from_string("fasta")?
+                }
+            };
+            let input = datasource(dimatches, format);
             let expanded = dimatches.is_present("expanded");
             return Dimension::dimension_command(input, expanded);
         };

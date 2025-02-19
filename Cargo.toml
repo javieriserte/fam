@@ -1,6 +1,6 @@
 [package]
 name = "fam"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Javier Iserte <javiserte@gmail.com>"]
 edition = "2018"
 

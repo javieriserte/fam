@@ -5,7 +5,8 @@ use famlib::{
         sequence_collection_from_file,
         sequence_collection_from_stdin,
         write_buffered_sequence_collection,
-        write_sequence_collection
+        write_sequence_collection,
+        InputFormats
     },
     seqs::{
         BufferedSeqCollection,
@@ -22,37 +23,46 @@ use std::io::stdout;
 #[derive(Debug)]
 /// Representation of the reading input of a MSA or sequence collection.
 pub enum DataSource {
-    StdIn,
-    FilePath(String),
+    StdIn(InputFormats),
+    FilePath(String, InputFormats),
 }
 
 impl DataSource {
-    pub fn get_buffered_sequence_collection(&self)
-        -> Option<BufferedSeqCollectionFromRead> {
+    pub fn get_buffered_sequence_collection(
+        &self
+    ) -> Option<BufferedSeqCollectionFromRead> {
         match self {
-            DataSource::StdIn => buffered_sequence_collection_from_stdin().ok(),
-            DataSource::FilePath(file) => {
-                buffered_sequence_collection_from_file(&Path::new(&file)).ok()
+            DataSource::StdIn(format) =>
+                buffered_sequence_collection_from_stdin(*format).ok(),
+            DataSource::FilePath(file, format) => {
+                buffered_sequence_collection_from_file(
+                    &Path::new(&file),
+                    *format
+                ).ok()
             }
         }
     }
     pub fn get_sequence_collection(&self) -> Option<SequenceCollection> {
         match self {
-            DataSource::StdIn => sequence_collection_from_stdin().ok(),
-            DataSource::FilePath(file) => sequence_collection_from_file(
-                &Path::new(&file)).ok()
+            DataSource::StdIn(format) => sequence_collection_from_stdin(
+                *format
+            ).ok(),
+            DataSource::FilePath(file, format) => sequence_collection_from_file(
+                &Path::new(&file),
+                *format
+            ).ok()
         }
     }
     pub fn source_name(&self) -> String {
         match self {
-            DataSource::StdIn => String::from("StdIn"),
-            DataSource::FilePath(file) => format!(
+            DataSource::StdIn(_) => String::from("StdIn"),
+            DataSource::FilePath(file, _) => format!(
                 "File: {}", file
             ),
         }
     }
-    pub fn from(path: &str) -> Self {
-        DataSource::FilePath(String::from(path))
+    pub fn from(path: &str, format: InputFormats) -> Self {
+        DataSource::FilePath(String::from(path), format)
     }
 }
 
