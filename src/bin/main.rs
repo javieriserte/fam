@@ -415,7 +415,6 @@ fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
                     )
                     .arg(
                         Arg::with_name("fixed")
-                            .short("f")
                             .long("fixed")
                             .takes_value(false)
                             .help("Keep gaps in a fixed position")
@@ -668,9 +667,6 @@ fn create_app() -> App<'static, 'static> {
     app = add_concat_subcommand(app);
     app = add_remove_subcommand(app);
     app = add_edit_subcommand(app);
-    app = add_replace_subcommand(app);
-    app = add_insert_subcommand(app);
-    app = add_delete_subcommand(app);
     app = add_shuffle_subcommand(app);
     app = app_plot_subcommand(app);
     app = add_filter_subcommand(app);

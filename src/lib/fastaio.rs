@@ -152,7 +152,7 @@ pub fn format_from_string(format: &str) -> Result<InputFormats, Error> {
 pub fn reader_for(format: InputFormats) -> Box<dyn SequenceReader> {
   match format {
     InputFormats::Fasta => Box::new(FastaReaderFromLines::new()),
-    InputFormats::Plain => unimplemented!()
+    InputFormats::Plain => Box::new(PlainReaderFromLines::new())
   }
 }
 
