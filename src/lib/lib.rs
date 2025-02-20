@@ -16,7 +16,7 @@ pub mod seqs {
     use std::{
         cell::RefCell,
         cmp::{max, min},
-        collections::HashMap,
+        collections::{HashMap, HashSet},
         io::{BufRead, ErrorKind}, iter::FromIterator
     };
     use std::fmt::{Display, Error, Formatter};
@@ -279,6 +279,20 @@ pub mod seqs {
         /// ```
         pub fn id(&self) -> &str {
             &self.id
+        }
+
+        pub fn remove_positions(&mut self, positions: &Vec<usize>) {
+            let seq = self.take_sequence().unwrap();
+            let mut new_seq = vec![];
+            let to_remove = HashSet::<usize>::from_iter(
+                positions.iter().cloned()
+            );
+            for (i, x) in seq.iter().enumerate() {
+                if !to_remove.contains(&i) {
+                    new_seq.push(*x);
+                }
+            }
+            self.set_sequence(new_seq);
         }
     }
 
@@ -1055,6 +1069,37 @@ pub mod seqs {
         pub fn seq_col_owned(self) -> SequenceCollection {
             self.seqs
         }
+
+        pub fn remove_all_gap_columns(&mut self) {
+            let mut to_remove = vec![];
+            for i in 0..self.length() {
+                match self.column(i) {
+                    None => (),
+                    Some(column) => {
+                        if column.iter().all(|x| *x == '-' || *x == '.') {
+                            to_remove.push(i);
+                        }
+                    }
+                }
+            }
+            for ann_seq in self.seqs.sequences.iter_mut() {
+                ann_seq.remove_positions(&to_remove);
+            }
+        }
+
+        pub fn remove_frq_gap_columns(&mut self, threshold: f64) {
+            let mut to_remove = vec![];
+            if let Some(frqs) = self.col_gap_frq() {
+                for (i, frq) in frqs.iter().enumerate() {
+                    if *frq > threshold {
+                        to_remove.push(i);
+                    }
+                }
+            }
+            for ann_seq in self.seqs.sequences.iter_mut() {
+                ann_seq.remove_positions(&to_remove);
+            }
+        }
     }
     impl Default for Alignment {
         fn default() -> Self {
@@ -1299,6 +1344,23 @@ mod test{
         }
         sq.to_msa().ok().unwrap()
     }
+    fn sample_gapped_msa() -> Alignment {
+        let mut sq = SequenceCollection::new();
+        let seqs = vec![
+            "-----TT-CA",
+            "AT---TT-CA",
+            "ATG-----CA",
+            "ATGC----CA",
+        ];
+        for (i, s) in seqs.into_iter().enumerate() {
+            let ca = AnnotatedSequence::from_string(
+                format!("Seq_{}", i),
+                String::from(s)
+            );
+            sq.add(ca).unwrap();
+        }
+        sq.to_msa().ok().unwrap()
+    }
     #[test]
     fn reorder_equal_order() {
         let mut msa = sample_sc().unwrap();
@@ -1424,5 +1486,24 @@ mod test{
         let seq3 = bsc.next_sequence().unwrap();
         assert_eq!(seq3.id(), "S3");
         assert_eq!(seq3.seq_as_string(), "ATT");
+    }
+    #[test]
+    fn test_remove_all_gap_columns() {
+        let mut msa = sample_gapped_msa();
+        // input:
+        // -----TT-CA
+        // AT---TT-CA
+        // ATG-----CA
+        // ATGC----CA
+        // expected output:
+        // ----TTCA
+        // AT--TTCA
+        // ATG---CA
+        // ATGC--CA
+        msa.remove_all_gap_columns();
+        assert_eq!(msa.get(0).unwrap().seq_as_string(), "----TTCA");
+        assert_eq!(msa.get(1).unwrap().seq_as_string(), "AT--TTCA");
+        assert_eq!(msa.get(2).unwrap().seq_as_string(), "ATG---CA");
+        assert_eq!(msa.get(3).unwrap().seq_as_string(), "ATGC--CA");
     }
 }

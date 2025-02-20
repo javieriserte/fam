@@ -16,7 +16,10 @@ use cmd::{
     pop::Pop,
     random::Random,
     remove::Remove,
-    Command
+    remove_all_gap_cols::RemoveAllGapColumns,
+    remove_freq_gap_cols::RemoveFreqGapColumns,
+    Command,
+    ToError
 };
 use std::io;
 
@@ -654,6 +657,66 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
+fn add_rm_gap_cols_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("rm-gap-cols")
+            .about("Remove columns with gaps in all positions")
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
+    );
+    return app;
+}
+
+fn add_rm_freq_cols_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("rm-gap-cols-frq")
+            .about(
+                "Remove columns with with a gap frequency greater than a given value"
+            )
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+            )
+    );
+    return app;
+}
+
 fn create_app() -> App<'static, 'static> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.8")
@@ -671,12 +734,18 @@ fn create_app() -> App<'static, 'static> {
     app = app_plot_subcommand(app);
     app = add_filter_subcommand(app);
     app = add_degap_subcommand(app);
+    app = add_rm_gap_cols_subcommand(app);
+    app = add_rm_freq_cols_subcommand(app);
     app = add_pad_subcommand(app);
     return app;
 }
 
 pub fn main() -> io::Result<()> {
     let app = create_app();
+    let mut help_message = Vec::new();
+    app
+        .write_help(&mut help_message)
+        .map_err(|_| "Could not write help message".to_io_error())?;
     let matches = app.get_matches();
     let commands: Vec<Box<dyn Command>> = vec![
         Box::new(Dimension{}),
@@ -692,6 +761,8 @@ pub fn main() -> io::Result<()> {
         Box::new(Filter{}),
         Box::new(Degap{}),
         Box::new(PadWithGapsCommand{}),
+        Box::new(RemoveAllGapColumns{}),
+        Box::new(RemoveFreqGapColumns{}),
     ];
     let is_there_any_command = commands
         .iter()
@@ -706,7 +777,7 @@ pub fn main() -> io::Result<()> {
             }
         },
         false => {
-            println!("{}", matches.usage())
+            println!("{}", String::from_utf8_lossy(&help_message));
         },
     }
     Ok(())

@@ -1,6 +1,7 @@
 use std::io;
 use clap::ArgMatches;
 use famlib::fastaio::InputFormats;
+use std::result::Result::Err;
 
 use crate::data::{DataSink, DataSource};
 pub mod gs;
@@ -16,6 +17,8 @@ pub mod onepixel;
 pub mod filter;
 pub mod degap;
 pub mod pad;
+pub mod remove_all_gap_cols;
+pub mod remove_freq_gap_cols;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {
@@ -36,5 +39,36 @@ fn datasource(matches: &ArgMatches, format: InputFormats) -> DataSource {
     match matches.value_of("input") {
         None => DataSource::StdIn(format),
         Some(x) => DataSource::from(&x, format),
+    }
+}
+
+#[allow(dead_code)]
+pub trait ToError {
+    fn to_error(&self) -> Result<(), io::Error>;
+    fn to_error_of_kind(&self, kind: io::ErrorKind) -> Result<(), io::Error>;
+    fn to_io_error(&self) -> io::Error;
+}
+
+impl ToError for str {
+    fn to_error(&self) -> Result<(), io::Error> {
+        Err(io::Error::new(io::ErrorKind::Other, self))
+    }
+    fn to_error_of_kind(&self, kind: io::ErrorKind) -> Result<(), io::Error> {
+        Err(io::Error::new(kind, self))
+    }
+    fn to_io_error(&self) -> io::Error {
+        io::Error::new(io::ErrorKind::Other, self)
+    }
+}
+
+impl ToError for String {
+    fn to_error(&self) -> Result<(), io::Error> {
+        Err(io::Error::new(io::ErrorKind::Other, self.clone()))
+    }
+    fn to_error_of_kind(&self, kind: io::ErrorKind) -> Result<(), io::Error> {
+        Err(io::Error::new(kind, self.clone()))
+    }
+    fn to_io_error(&self) -> io::Error {
+        io::Error::new(io::ErrorKind::Other, self.clone())
     }
 }
