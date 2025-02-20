@@ -1,5 +1,5 @@
 use std::io::{self, ErrorKind};
-use famlib::{fastaio::format_from_string, random::RandomGen};
+use famlib::random::RandomGen;
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 
@@ -67,43 +67,25 @@ impl Random {
 impl Command for Random {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("shuffle") {
-            let format = match m.value_of("format") {
-                Some(format) => {
-                    format_from_string(format)?
-                },
-                None => {
-                    eprintln!("[WARN] No format provided, assuming fasta");
-                    format_from_string("fasta")?
-                }
-            };
             match m.subcommand() {
                 ("all", sm) => {
                     let fixed = sm.map_or_else(
                         || false, |x| x.is_present("fixed"));
                     Self::shuffle_command(
-                        datasource(m, format),
-                        datasink(m),
+                        datasource(sm.unwrap()),
+                        datasink(sm.unwrap()),
                         fixed,
                     )?
                 },
                 ("rows", sm) => {
-                    let format = match m.value_of("format") {
-                        Some(format) => {
-                            format_from_string(format)?
-                        },
-                        None => {
-                            eprintln!("[WARN] No format provided, assuming fasta");
-                            format_from_string("fasta")?
-                        }
-                    };
                     Self::shuffle_rows_command(
-                        datasource(sm.unwrap(), format),
+                        datasource(sm.unwrap()),
                         datasink(sm.unwrap()),
                     )?
                 },
                 ("cols", sm) => {
                     Self::shuffle_cols_command(
-                        datasource(sm.unwrap(), format),
+                        datasource(sm.unwrap()),
                         datasink(sm.unwrap())
                     )?
                 },

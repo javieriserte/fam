@@ -1,5 +1,5 @@
 use std::io::{self, ErrorKind};
-use famlib::{fastaio::format_from_string, seqs::SequenceAccesors};
+use famlib::seqs::SequenceAccesors;
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 
@@ -28,16 +28,7 @@ impl Pop {
 impl Command for Pop {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("pop") {
-            let format = match m.value_of("format") {
-                Some(format) => {
-                    format_from_string(format)?
-                },
-                None => {
-                    eprintln!("[WARN] No format provided, assuming fasta");
-                    format_from_string("fasta")?
-                }
-            };
-            let input = datasource(m, format);
+            let input = datasource(m);
             let output = datasink(m);
             let id = m.value_of("id").unwrap();
             Self::pop_command(input, output, String::from(id))?

@@ -1,6 +1,6 @@
 use std::io;
 use clap::ArgMatches;
-use famlib::fastaio::InputFormats;
+use famlib::fastaio::{format_from_string, InputFormats};
 use std::result::Result::Err;
 
 use crate::data::{DataSink, DataSource};
@@ -19,6 +19,7 @@ pub mod degap;
 pub mod pad;
 pub mod remove_all_gap_cols;
 pub mod remove_freq_gap_cols;
+pub mod gap;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {
@@ -35,10 +36,29 @@ pub fn datasink(matches: &ArgMatches) -> DataSink {
 }
 
 /// Creates a DataSource struct from the commandline arguments
-fn datasource(matches: &ArgMatches, format: InputFormats) -> DataSource {
+fn datasource(matches: &ArgMatches) -> DataSource {
+    let format = inputformat(matches);
     match matches.value_of("input") {
         None => DataSource::StdIn(format),
         Some(x) => DataSource::from(&x, format),
+    }
+}
+// Creates a format input from the commandline arguments
+fn inputformat(matches: &ArgMatches) -> InputFormats {
+    match matches.value_of("format") {
+        Some(format) => {
+            match format_from_string(format) {
+                Ok(x) => x,
+                Err(_) => {
+                    eprintln!("[WARN] Invalid format provided, assuming fasta");
+                    format_from_string("fasta").unwrap()
+                }
+            }
+        },
+        None => {
+            eprintln!("[WARN] No format provided, assuming fasta");
+            format_from_string("fasta").unwrap()
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 use std::{io::{self, ErrorKind}, path::Path};
-use famlib::{fastaio::format_from_string, plotting::OnePixelMsaPlotter};
+use famlib::plotting::OnePixelMsaPlotter;
 use crate::data::DataSource;
 use super::{Command, datasource};
 
@@ -49,16 +49,7 @@ impl OnePixel {
 impl Command for OnePixel {
     fn run(&self, matches: &clap::ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("plot") {
-            let format = match m.value_of("format") {
-                Some(format) => {
-                    format_from_string(format)?
-                },
-                None => {
-                    eprintln!("[WARN] No format provided, assuming fasta");
-                    format_from_string("fasta")?
-                }
-            };
-            let input = datasource(m, format);
+            let input = datasource(m);
             let output = m.value_of("output").unwrap();
             let is_protein = ! m.is_present("is_dna");
             let pixel_size = m.value_of("pixel_size")

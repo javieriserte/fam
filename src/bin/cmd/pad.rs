@@ -1,5 +1,4 @@
 use super::Command;
-use famlib::fastaio::format_from_string;
 use famlib::seqs::{BufferedSeqCollection, SequenceCollection};
 use famlib::gapping::{PadWithGapsOnce, PadWithGaps};
 
@@ -8,16 +7,7 @@ pub struct PadWithGapsCommand { }
 impl Command for PadWithGapsCommand {
   fn run(&self, matches: &clap::ArgMatches) ->  std::io::Result<()> {
     if let Some(m) = matches.subcommand_matches("pad") {
-      let format = match m.value_of("format") {
-          Some(format) => {
-              format_from_string(format)?
-          },
-          None => {
-              eprintln!("[WARN] No format provided, assuming fasta");
-              format_from_string("fasta")?
-          }
-      };
-      let input = super::datasource(m, format);
+      let input = super::datasource(m);
       let output = super::datasink(m);
       match m.value_of("width") {
         Some(w) => {

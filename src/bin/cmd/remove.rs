@@ -3,7 +3,7 @@ use std::io::{self, ErrorKind};
 use crate::data::{DataSink, DataSource};
 use super::{Command, datasink, datasource};
 use clap::{ArgMatches, Values};
-use famlib::{edit_msa::EditMSA, fastaio::format_from_string, seqs::SequenceAccesors};
+use famlib::{edit_msa::EditMSA, seqs::SequenceAccesors};
 
 pub struct Remove {}
 
@@ -50,16 +50,7 @@ impl Remove {
 impl Command for Remove {
     fn run(&self, matches: &ArgMatches) ->  io::Result<()> {
         if let Some(m) = matches.subcommand_matches("remove") {
-            let format = match m.value_of("format") {
-                Some(format) => {
-                    format_from_string(format)?
-                },
-                None => {
-                    eprintln!("[WARN] No format provided, assuming fasta");
-                    format_from_string("fasta")?
-                }
-            };
-            let input = datasource(m, format);
+            let input = datasource(m);
             let sink = datasink(m);
             let val_to_vec = |x:Values| x.filter_map(|y|
                 y.parse::<usize>().ok())

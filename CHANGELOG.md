@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Grouped all gap manipulation commands into a single command.
+
 ## Current Version
 
 - Version 0.0.8 - 2025-02-19
