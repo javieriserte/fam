@@ -4,7 +4,6 @@ use famlib::fastaio::{format_from_string, InputFormats};
 use std::result::Result::Err;
 
 use crate::data::{DataSink, DataSource};
-pub mod gs;
 pub mod pop;
 pub mod dimension;
 pub mod collect;
@@ -15,10 +14,7 @@ pub mod edit;
 pub mod random;
 pub mod onepixel;
 pub mod filter;
-pub mod degap;
 pub mod pad;
-pub mod remove_all_gap_cols;
-pub mod remove_freq_gap_cols;
 pub mod gap;
 
 /// A trait to encapsulate command line execution code.
