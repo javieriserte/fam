@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version 0.0.9 - 2025-02-21
+## Version 0.0.10 - 2025-02-25
 
 ## New features
 
