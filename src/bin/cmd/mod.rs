@@ -7,8 +7,6 @@ use crate::data::{DataSink, DataSource};
 pub mod pop;
 pub mod dimension;
 pub mod collect;
-pub mod join;
-pub mod concat;
 pub mod remove;
 pub mod edit;
 pub mod random;
@@ -16,6 +14,7 @@ pub mod onepixel;
 pub mod filter;
 pub mod pad;
 pub mod gap;
+pub mod combine;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {

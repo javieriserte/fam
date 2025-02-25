@@ -3,7 +3,19 @@ mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
 use cmd::{
-    collect::Collect, concat::Concat, dimension::Dimension, edit::Edit, filter::Filter, gap::Gap, join::Join, onepixel::OnePixel, pad::PadWithGapsCommand, pop::Pop, random::Random, remove::Remove, Command, ToError
+    collect::Collect,
+    dimension::Dimension,
+    edit::Edit,
+    filter::Filter,
+    gap::Gap,
+    onepixel::OnePixel,
+    pad::PadWithGapsCommand,
+    pop::Pop,
+    random::Random,
+    combine::Combine,
+    remove::Remove,
+    Command,
+    ToError
 };
 use std::io;
 
@@ -91,66 +103,6 @@ fn add_pop_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn add_join_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
-        SubCommand::with_name("join")
-            .about(
-                "Joins (merge vertically) two sequence collections into one file"
-            )
-            .arg(
-                Arg::with_name("input")
-                    .min_values(2)
-                    .takes_value(true)
-                    .help("A list of comma separated input files")
-            )
-            .arg(
-                Arg::with_name("output")
-                    .short("o")
-                    .long("out")
-                    .takes_value(true)
-                    .help("Output file")
-            )
-            .arg(
-                Arg::with_name("format")
-                    .short("f")
-                    .long("format")
-                    .help("Specify the input format: [Fasta, Plain]")
-                    .default_value("fasta")
-            )
-    );
-    return app;
-}
-
-fn add_concat_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
-    let app = app.subcommand(
-        SubCommand::with_name("concat")
-            .about(
-                "Concatenates (merge horizontally) two sequence collections \
-                into one file"
-            )
-            .arg(
-                Arg::with_name("input")
-                    .min_values(2)
-                    .takes_value(true)
-                    .help("A list of comma separated input files")
-                )
-            .arg(
-                Arg::with_name("output")
-                    .short("o")
-                    .long("out")
-                    .takes_value(true)
-                    .help("Output file")
-            )
-            .arg(
-                Arg::with_name("format")
-                    .short("f")
-                    .long("format")
-                    .help("Specify the input format: [Fasta, Plain]")
-                    .default_value("fasta")
-            )
-    );
-    return app;
-}
 
 fn add_remove_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     let app = app.subcommand(
@@ -576,6 +528,57 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
+fn add_combine_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+    let app = app.subcommand(
+        SubCommand::with_name("combine")
+            .about("Combine two sequence collections")
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("Output file")
+                    .global(true)
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+                    .global(true)
+            )
+            .arg(
+                Arg::with_name("infiles")
+                    .min_values(2)
+                    .takes_value(true)
+                    .help("A list of comma separated input files")
+                    .global(true)
+            )
+            .subcommand(
+                SubCommand::with_name("concat")
+                    .about("Concatenate the sequences (Vertically)")
+            )
+            .subcommand(
+                SubCommand::with_name("join")
+                    .about("Join the sequences (Horizontally)")
+            )
+            .subcommand(
+                SubCommand::with_name("merge")
+                    .about("Merge the sequences (Join Horizontally by index)")
+                    .arg(
+                        Arg::with_name("outer")
+                            .long("outer")
+                            .takes_value(false)
+                            .help(
+                                "Include all sequences, even if they are not in all files"
+                            )
+                    )
+            )
+    );
+    return app;
+}
+
 fn add_gap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("gap")
@@ -633,16 +636,15 @@ fn create_app() -> App<'static, 'static> {
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app);
     app = add_collect_subcommand(app);
-    app = add_pop_subcommand(app);
-    app = add_join_subcommand(app);
-    app = add_concat_subcommand(app);
-    app = add_remove_subcommand(app);
-    app = add_edit_subcommand(app);
-    app = add_shuffle_subcommand(app);
     app = app_plot_subcommand(app);
+    app = add_remove_subcommand(app);
+    app = add_shuffle_subcommand(app);
+    app = add_edit_subcommand(app);
+    app = add_pop_subcommand(app);
     app = add_filter_subcommand(app);
-    app = add_gap_subcommand(app);
     app = add_pad_subcommand(app);
+    app = add_gap_subcommand(app);
+    app = add_combine_subcommand(app);
     return app;
 }
 
@@ -657,15 +659,14 @@ pub fn main() -> io::Result<()> {
         Box::new(Dimension{}),
         Box::new(Collect{}),
         Box::new(OnePixel{}),
-        Box::new(Concat{}),
         Box::new(Remove{}),
         Box::new(Random{}),
-        Box::new(Join{}),
         Box::new(Edit{}),
         Box::new(Pop{}),
         Box::new(Filter{}),
         Box::new(PadWithGapsCommand{}),
         Box::new(Gap{}),
+        Box::new(Combine{}),
     ];
     let is_there_any_command = commands
         .iter()

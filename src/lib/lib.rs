@@ -1,7 +1,7 @@
 pub mod edit;
 pub mod edit_msa;
 pub mod fastaio;
-pub mod merge;
+pub mod combine;
 pub mod random;
 pub mod conservation;
 pub mod plotting;
@@ -773,6 +773,49 @@ pub mod seqs {
             seqcol
         }
     }
+
+
+    /// Implements the `FromIterator` trait for `SequenceCollection`, allowing
+    /// it to be created from an iterator of `(Into<String>, Into<String>)`
+    /// items.  The first element of the tuple is the sequence ID and the second
+    /// element is the sequence itself.
+    ///
+    /// # Arguments
+    /// * `iter` - An iterator that yields `(Into<String>, Into<String>)` items.
+    ///
+    /// # Returns
+    /// A `SequenceCollection` containing all the `AnnotatedSequence` items from
+    /// the iterator.
+    /// ```
+    /// use famlib::seqs::SequenceCollection;
+    /// use famlib::seqs::SequenceAccesors;
+    /// use std::iter::FromIterator;
+    /// let seqs = vec![
+    ///     (String::from("S1"), "ATCATGCTACTG"),
+    ///     (String::from("S2"), "TAGTACGATGAC")
+    /// ];
+    /// let seqcol = SequenceCollection::from_iter(seqs.clone());
+    /// let seqcol2 = seqs.into_iter().collect::<SequenceCollection>();
+    /// assert_eq!(seqcol.size(), 2);
+    /// assert_eq!(seqcol2.size(), 2);
+    /// ```
+    impl <K, V> FromIterator<(K, V)> for SequenceCollection
+        where K: Into<String>, V: Into<String> {
+        fn from_iter<I: IntoIterator<Item = (K, V)>>(
+            iter: I
+        ) -> Self {
+            let mut seqcol = SequenceCollection::new();
+            for (id, seq) in iter {
+                let a = AnnotatedSequence::from_string(
+                    id.into(),
+                    seq.into()
+                );
+                seqcol.add(a).unwrap();
+            }
+            seqcol
+        }
+    }
+
 
     pub trait BufferedSeqCollection {
         fn next_sequence(&self) -> Option<AnnotatedSequence>;

@@ -1,6 +1,6 @@
 # Contribution guidelines
 
-## For a new feature / bug fix:
+## For a new feature / bug fix
 
 - Report an issue.
 - Create a new i/issue_number branch
@@ -16,7 +16,7 @@
 - Create a merge request to dev branch
 - Merge the branch or ask to other to merge it.
 
-## For a new release:
+## For a new release
 
 - Create a merge request from dev to master.
 - Merge the branch or wait to other to merge it.
@@ -45,7 +45,7 @@
   the number is kept, except that the new version is a minor or major
   update.
 
-# Semantic Versioning Specification (SemVer)
+## Semantic Versioning Specification (SemVer)
 
 The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”,
 “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be
@@ -93,4 +93,3 @@ Identifiers MUST NOT be empty. Build metadata MUST be ignored when determining
 version precedence. Thus two versions that differ only in the build metadata,
 have the same precedence. Examples: 1.0.0-alpha+001, 1.0.0+20130313144700,
 1.0.0-beta+exp.sha.5114f85, 1.0.0+21AF26D3—-117B344092BD.
-

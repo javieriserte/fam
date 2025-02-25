@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## New features
 
+- [#34] Combine command groups concat, join and merge
 - [#26] Added support for plain text files as input
 - [#25] Added remove columns with gaps
 - [#32] Join gaps command into a single command
