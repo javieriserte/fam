@@ -682,7 +682,7 @@ fn add_gap_subcommand<'a>(
 
 fn create_app<'a>(map: &'a Messages)-> App<'a, 'a> {
     let mut app = App::new("Fasta Alignment Manipulator")
-        .version("0.0.10")
+        .version("0.0.11")
         .author("Javier A. Iserte <javiserte@gmail.com>")
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app, &map);
