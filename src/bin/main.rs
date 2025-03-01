@@ -27,13 +27,12 @@ use config::config::get_config;
 
 i18n!("locales");
 
-
-// This code 
 fn add_dimensions_subcommand<'a>(app: App<'a, 'a>, map: &'a HashMap<&'a str, String>) -> App<'a, 'a> {
     let new_app = app.subcommand(
         SubCommand::with_name("dimensions")
             .about("Get the dimensions of the fasta file")
-            .about(map.get("asdas").map(|x| x.as_str()).unwrap_or(""))
+            // This is how the mapping should be used.
+            // .about(map.get("asdas").map(|x| x.as_str()).unwrap_or(""))
             .arg(
                 Arg::with_name("input")
                     .help("Input file")
@@ -56,7 +55,10 @@ fn add_dimensions_subcommand<'a>(app: App<'a, 'a>, map: &'a HashMap<&'a str, Str
     return new_app;
 }
 
-fn add_collect_subcommand<'a>(app: App<'a, 'a>, map: &HashMap<&'a str, String>) -> App<'a, 'a> {
+fn add_collect_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("collect")
             .about("Get sequences from stdin and writes to a file.")
@@ -77,7 +79,10 @@ fn add_collect_subcommand<'a>(app: App<'a, 'a>, map: &HashMap<&'a str, String>) 
     return app
 }
 
-fn add_pop_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_pop_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("pop")
             .about("Moves a sequence to the top")
@@ -114,7 +119,10 @@ fn add_pop_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
 }
 
 
-fn add_remove_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_remove_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("remove")
             .about("Delete some rows or columns from the sequence collection")
@@ -301,7 +309,10 @@ fn add_delete_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
     return edit;
 }
 
-fn add_edit_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_edit_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let edit = SubCommand::with_name("edit")
         .about("Edit MSA content");
     let edit = add_replace_subcommand(edit);
@@ -312,7 +323,10 @@ fn add_edit_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
 }
 
 
-fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_shuffle_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("shuffle")
             .about("Randomize MSA")
@@ -401,7 +415,10 @@ fn add_shuffle_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn app_plot_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn app_plot_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("plot")
             .about("Create a simple plot of the MSA")
@@ -451,7 +468,10 @@ fn app_plot_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_filter_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("filter")
             .about("filter sequence matching a regex to the sequence id.")
@@ -502,7 +522,10 @@ fn add_filter_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_pad_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("pad")
             .about("Pad sequence collection with gaps")
@@ -538,7 +561,10 @@ fn add_pad_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn add_combine_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_combine_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("combine")
             .about("Combine two sequence collections")
@@ -589,7 +615,10 @@ fn add_combine_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn add_gap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_gap_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &HashMap<&'a str, String>
+) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("gap")
             .about("Gap operations")
@@ -646,21 +675,21 @@ fn create_app<'a>(map: &'a HashMap<&'a str, String>)-> App<'a, 'a> {
         .about("Does many common manipulation of fasta files.");
     app = add_dimensions_subcommand(app, &map);
     app = add_collect_subcommand(app, &map);
-    app = app_plot_subcommand(app);
-    app = add_remove_subcommand(app);
-    app = add_shuffle_subcommand(app);
-    app = add_edit_subcommand(app);
-    app = add_pop_subcommand(app);
-    app = add_filter_subcommand(app);
-    app = add_pad_subcommand(app);
-    app = add_gap_subcommand(app);
-    app = add_combine_subcommand(app);
+    app = app_plot_subcommand(app, &map);
+    app = add_remove_subcommand(app, &map);
+    app = add_shuffle_subcommand(app, &map);
+    app = add_edit_subcommand(app, &map);
+    app = add_pop_subcommand(app, &map);
+    app = add_filter_subcommand(app, &map);
+    app = add_pad_subcommand(app, &map);
+    app = add_gap_subcommand(app, &map);
+    app = add_combine_subcommand(app, &map);
     return app;
 }
 
 fn  create_translation_map<'a>() -> HashMap<&'a str, String> {
-    let terms = vec!["a"];
-    let map = terms
+    let translation_keys = vec!["a"];
+    let map = translation_keys
         .into_iter()
         .map(|x| (x, t!(x).into_owned()))
         .collect::<HashMap<_,_>>();

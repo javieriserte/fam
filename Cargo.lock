@@ -231,7 +231,6 @@ dependencies = [
  "graphics_buffer",
  "home",
  "itertools 0.10.0",
- "once_cell",
  "piston2d-graphics",
  "rand",
  "regex",
