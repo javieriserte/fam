@@ -27,12 +27,15 @@ use config::config::get_config;
 
 i18n!("locales");
 
-fn add_dimensions_subcommand<'a>(app: App<'a, 'a>, map: &'a HashMap<&'a str, String>) -> App<'a, 'a> {
+fn add_dimensions_subcommand<'a>(
+    app: App<'a, 'a>,
+    _map: &'a Messages
+) -> App<'a, 'a> {
     let new_app = app.subcommand(
         SubCommand::with_name("dimensions")
+            .about(_map.msg("example!"))
             .about("Get the dimensions of the fasta file")
             // This is how the mapping should be used.
-            // .about(map.get("asdas").map(|x| x.as_str()).unwrap_or(""))
             .arg(
                 Arg::with_name("input")
                     .help("Input file")
@@ -57,7 +60,7 @@ fn add_dimensions_subcommand<'a>(app: App<'a, 'a>, map: &'a HashMap<&'a str, Str
 
 fn add_collect_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &'a Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("collect")
@@ -81,7 +84,7 @@ fn add_collect_subcommand<'a>(
 
 fn add_pop_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &'a Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("pop")
@@ -121,7 +124,7 @@ fn add_pop_subcommand<'a>(
 
 fn add_remove_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &'a Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("remove")
@@ -167,7 +170,10 @@ fn add_remove_subcommand<'a>(
     return app;
 }
 
-fn add_replace_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+fn add_replace_subcommand<'a>(
+    edit: App<'a, 'a>,
+    _map: &'a Messages
+) -> App<'a, 'a> {
     let edit = edit.subcommand(
         SubCommand::with_name("replace")
             .arg(
@@ -212,7 +218,10 @@ fn add_replace_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
     return edit;
 }
 
-fn add_insert_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+fn add_insert_subcommand<'a>(
+    edit: App<'a, 'a>,
+    _map: &Messages
+) -> App<'a, 'a> {
     let edit = edit.subcommand(
         SubCommand::with_name("insert")
             .arg(
@@ -257,7 +266,10 @@ fn add_insert_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
     return edit;
 }
 
-fn add_delete_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
+fn add_delete_subcommand<'a>(
+    edit: App<'a, 'a>,
+    _map: &Messages
+) -> App<'a, 'a> {
     let edit = edit.subcommand(
         SubCommand::with_name("delete")
             .arg(
@@ -311,13 +323,13 @@ fn add_delete_subcommand<'a>(edit: App<'a, 'a>) -> App<'a, 'a> {
 
 fn add_edit_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &'a Messages
 ) -> App<'a, 'a> {
     let edit = SubCommand::with_name("edit")
         .about("Edit MSA content");
-    let edit = add_replace_subcommand(edit);
-    let edit = add_insert_subcommand(edit);
-    let edit = add_delete_subcommand(edit);
+    let edit = add_replace_subcommand(edit, _map);
+    let edit = add_insert_subcommand(edit, _map);
+    let edit = add_delete_subcommand(edit, _map);
     let app = app.subcommand(edit);
     return app;
 }
@@ -325,7 +337,7 @@ fn add_edit_subcommand<'a>(
 
 fn add_shuffle_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("shuffle")
@@ -417,7 +429,7 @@ fn add_shuffle_subcommand<'a>(
 
 fn app_plot_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("plot")
@@ -470,7 +482,7 @@ fn app_plot_subcommand<'a>(
 
 fn add_filter_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("filter")
@@ -524,7 +536,7 @@ fn add_filter_subcommand<'a>(
 
 fn add_pad_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("pad")
@@ -563,7 +575,7 @@ fn add_pad_subcommand<'a>(
 
 fn add_combine_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("combine")
@@ -617,7 +629,7 @@ fn add_combine_subcommand<'a>(
 
 fn add_gap_subcommand<'a>(
     app: App<'a, 'a>,
-    _map: &HashMap<&'a str, String>
+    _map: &Messages
 ) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("gap")
@@ -668,7 +680,7 @@ fn add_gap_subcommand<'a>(
     return app;
 }
 
-fn create_app<'a>(map: &'a HashMap<&'a str, String>)-> App<'a, 'a> {
+fn create_app<'a>(map: &'a Messages)-> App<'a, 'a> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.10")
         .author("Javier A. Iserte <javiserte@gmail.com>")
@@ -696,11 +708,26 @@ fn  create_translation_map<'a>() -> HashMap<&'a str, String> {
     map
 }
 
+struct Messages<'a, 'b> {
+    mapping: &'b HashMap<&'a str, String>
+}
+
+impl <'a, 'b> Messages<'a, 'b> {
+    pub fn msg(&self, key: &'a str) -> &'b str {
+        self
+            .mapping
+            .get(key)
+            .map(|x| x.as_str())
+            .unwrap_or(key)
+    }
+}
+
 pub fn main() -> io::Result<()> {
     let config = get_config();
     rust_i18n::set_locale(&config.locale.lang);
     let map = create_translation_map();
-    let app = create_app(&map);
+    let messages = Messages {mapping: &map};
+    let app = create_app(&messages);
     let mut help_message = Vec::new();
     app
         .write_help(&mut help_message)
