@@ -1,4 +1,8 @@
 extern crate clap;
+
+#[macro_use]
+extern crate rust_i18n;
+
 mod cmd;
 mod data;
 use clap::{App, Arg, SubCommand};
@@ -17,13 +21,19 @@ use cmd::{
     Command,
     ToError
 };
-use std::io;
+use std::{collections::HashMap, io};
+mod config;
+use config::config::get_config;
+
+i18n!("locales");
 
 
-fn add_dimensions_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+// This code 
+fn add_dimensions_subcommand<'a>(app: App<'a, 'a>, map: &'a HashMap<&'a str, String>) -> App<'a, 'a> {
     let new_app = app.subcommand(
         SubCommand::with_name("dimensions")
             .about("Get the dimensions of the fasta file")
+            .about(map.get("asdas").map(|x| x.as_str()).unwrap_or(""))
             .arg(
                 Arg::with_name("input")
                     .help("Input file")
@@ -46,7 +56,7 @@ fn add_dimensions_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return new_app;
 }
 
-fn add_collect_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
+fn add_collect_subcommand<'a>(app: App<'a, 'a>, map: &HashMap<&'a str, String>) -> App<'a, 'a> {
     let app = app.subcommand(
         SubCommand::with_name("collect")
             .about("Get sequences from stdin and writes to a file.")
@@ -629,13 +639,13 @@ fn add_gap_subcommand<'a>(app: App<'a, 'a>) -> App<'a, 'a> {
     return app;
 }
 
-fn create_app() -> App<'static, 'static> {
+fn create_app<'a>(map: &'a HashMap<&'a str, String>)-> App<'a, 'a> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.10")
         .author("Javier A. Iserte <javiserte@gmail.com>")
         .about("Does many common manipulation of fasta files.");
-    app = add_dimensions_subcommand(app);
-    app = add_collect_subcommand(app);
+    app = add_dimensions_subcommand(app, &map);
+    app = add_collect_subcommand(app, &map);
     app = app_plot_subcommand(app);
     app = add_remove_subcommand(app);
     app = add_shuffle_subcommand(app);
@@ -648,12 +658,24 @@ fn create_app() -> App<'static, 'static> {
     return app;
 }
 
+fn  create_translation_map<'a>() -> HashMap<&'a str, String> {
+    let terms = vec!["a"];
+    let map = terms
+        .into_iter()
+        .map(|x| (x, t!(x).into_owned()))
+        .collect::<HashMap<_,_>>();
+    map
+}
+
 pub fn main() -> io::Result<()> {
-    let app = create_app();
+    let config = get_config();
+    rust_i18n::set_locale(&config.locale.lang);
+    let map = create_translation_map();
+    let app = create_app(&map);
     let mut help_message = Vec::new();
     app
         .write_help(&mut help_message)
-        .map_err(|_| "Could not write help message".to_io_error())?;
+        .map_err(|_| t!("Could not write help message").to_io_error())?;
     let matches = app.get_matches();
     let commands: Vec<Box<dyn Command>> = vec![
         Box::new(Dimension{}),
