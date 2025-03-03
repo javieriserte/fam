@@ -18,6 +18,7 @@ use cmd::{
     random::Random,
     combine::Combine,
     remove::Remove,
+    trim::Trim,
     Command,
     ToError
 };
@@ -680,6 +681,79 @@ fn add_gap_subcommand<'a>(
     return app;
 }
 
+fn add_trim_command<'a>(
+    app: App<'a, 'a>,
+    _map: &Messages
+) -> App<'a, 'a> {
+    app.subcommand(
+        SubCommand::with_name("trim")
+            .about("Gap operations")
+            .arg(
+                Arg::with_name("input")
+                    .short("i")
+                    .long("in")
+                    .takes_value(true)
+                    .help("The input file")
+                    .global(true)
+            )
+            .arg(
+                Arg::with_name("output")
+                    .short("o")
+                    .long("out")
+                    .takes_value(true)
+                    .help("The output file")
+                    .global(true)
+            )
+            .arg(
+                Arg::with_name("format")
+                    .short("f")
+                    .long("format")
+                    .help("Specify the input format: [Fasta, Plain]")
+                    .default_value("fasta")
+                    .global(true)
+            )
+            .subcommand(
+                SubCommand::with_name("by-gaps")
+                    .arg(
+                        Arg::with_name("right")
+                            .long("right")
+                            .takes_value(false)
+                            .help(
+                                "Trim from the right until no gaps are present"
+                            )
+                    )
+                    .arg(
+                        Arg::with_name("left")
+                            .long("left")
+                            .takes_value(false)
+                            .help(
+                                "Trim from the left until no gaps are present"
+                            )
+                    )
+            )
+            .subcommand(
+                SubCommand::with_name("fixed")
+                    .arg(
+                        Arg::with_name("right")
+                            .long("right")
+                            .takes_value(true)
+                            .help(
+                                "Trim from the right a fixed number of columns"
+                            )
+                    )
+                    .arg(
+                        Arg::with_name("left")
+                            .long("left")
+                            .takes_value(true)
+                            .help(
+                                "Trim from the left a fixed number of columns"
+                            )
+                    )
+            )
+
+    )
+}
+
 fn create_app<'a>(map: &'a Messages)-> App<'a, 'a> {
     let mut app = App::new("Fasta Alignment Manipulator")
         .version("0.0.11")
@@ -696,6 +770,7 @@ fn create_app<'a>(map: &'a Messages)-> App<'a, 'a> {
     app = add_pad_subcommand(app, &map);
     app = add_gap_subcommand(app, &map);
     app = add_combine_subcommand(app, &map);
+    app = add_trim_command(app, &map);
     return app;
 }
 
@@ -745,6 +820,7 @@ pub fn main() -> io::Result<()> {
         Box::new(PadWithGapsCommand{}),
         Box::new(Gap{}),
         Box::new(Combine{}),
+        Box::new(Trim{}),
     ];
     let is_there_any_command = commands
         .iter()

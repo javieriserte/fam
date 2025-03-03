@@ -11,6 +11,7 @@ pub mod matrices;
 pub mod filter;
 pub mod degap;
 pub mod gapping;
+pub mod trim;
 
 pub mod seqs {
     use std::{
@@ -123,10 +124,12 @@ pub mod seqs {
             }
         }
 
-        pub fn from_string(id: String, sequence: String) -> Self {
+        pub fn from_string<T: ToString, U: ToString>(id: T, sequence: U) -> Self {
             AnnotatedSequence {
-                id,
-                sequence: Some(sequence.chars().collect::<Vec<char>>()),
+                id: id.to_string(),
+                sequence: Some(
+                    sequence.to_string().chars().collect::<Vec<char>>()
+                ),
             }
         }
 
@@ -293,6 +296,39 @@ pub mod seqs {
                 }
             }
             self.set_sequence(new_seq);
+        }
+
+        /// Trims a sequence with a fixed length from the left and right.
+        /// ```
+        /// use famlib::seqs::AnnotatedSequence;
+        /// let mut seq = AnnotatedSequence::from_string(
+        ///     "S1",
+        ///     "ABCDEFGHIJ"
+        /// );
+        /// seq.trim_fixed(2, 3);
+        /// assert_eq!(seq.seq_as_string(), "CDEFG");
+        /// let mut seq = AnnotatedSequence::from_string(
+        ///     "S1",
+        ///     "ABCDEFGHIJ"
+        /// );
+        /// seq.trim_fixed(5, 5);
+        /// assert_eq!(seq.seq_as_string(), "");
+        /// let mut seq = AnnotatedSequence::from_string(
+        ///     "S1",
+        ///     "ABCDEFGHIJ"
+        /// );
+        /// seq.trim_fixed(6, 5);
+        /// assert_eq!(seq.seq_as_string(), "");
+        /// ```
+        pub fn trim_fixed(&mut self, left: usize, right:usize) {
+            let seq = self.take_sequence().unwrap();
+            if left + right > seq.len() {
+                let new_seq = vec![];
+                self.set_sequence(new_seq);
+            } else {
+                let new_seq = (&seq[left .. seq.len() - right]).to_vec();
+                self.set_sequence(new_seq);
+            }
         }
     }
 
@@ -1144,6 +1180,7 @@ pub mod seqs {
             }
         }
     }
+    
     impl Default for Alignment {
         fn default() -> Self {
             Self::new()

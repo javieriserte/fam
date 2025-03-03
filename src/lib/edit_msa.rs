@@ -142,6 +142,7 @@ impl EditMSA for Alignment {
         &mut self,
         positions: Vec<usize>
     ) -> std::result::Result<(), SeqError> {
+        println!("Positions: {:?}", positions);
         let mut sorted = positions.clone();
         sorted.sort_unstable();
         sorted.reverse();

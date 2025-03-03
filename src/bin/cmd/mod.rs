@@ -15,6 +15,7 @@ pub mod filter;
 pub mod pad;
 pub mod gap;
 pub mod combine;
+pub mod trim;
 
 /// A trait to encapsulate command line execution code.
 pub trait Command {
