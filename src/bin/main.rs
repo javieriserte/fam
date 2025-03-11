@@ -750,6 +750,25 @@ fn add_trim_command<'a>(
                             )
                     )
             )
+            .subcommand(
+                SubCommand::with_name("by-terminal-gaps")
+                    .arg(
+                        Arg::with_name("right")
+                            .long("right")
+                            .takes_value(true)
+                            .help(
+                                "Trim from the right by terminal gaps"
+                            )
+                    )
+                    .arg(
+                        Arg::with_name("left")
+                            .long("left")
+                            .takes_value(true)
+                            .help(
+                                "Trim from the left by terminal gaps"
+                            )
+                    )
+            )
 
     )
 }

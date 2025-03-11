@@ -39,7 +39,23 @@ impl Trim {
         let result = famlib::trim::Trim::trim_by_gaps(&input, right, left);
         fo.write_fasta(&result)
             .map_err(Into::into)
-
+    }
+    pub fn trim_by_terminal_gaps(
+        fs: DataSource,
+        fo: DataSink,
+        right: bool,
+        left: bool,
+    ) -> Result<()> {
+        let input = fs
+            .get_sequence_collection()
+            .unwrap();
+        let result = famlib::trim::Trim::trim_by_terminal_gaps(
+            &input,
+            right,
+            left
+        );
+        fo.write_fasta(&result)
+            .map_err(Into::into)
     }
 }
 
@@ -71,6 +87,17 @@ impl Command for Trim {
                     left = true
                 }
                 Self::trim_by_gaps(input, sink, left, right)?;
+            }
+            if let Some(m1) = m.subcommand_matches("by-terminal-gaps") {
+                let input = datasource(m1);
+                let sink = datasink(m1);
+                let mut right = m1.is_present("right");
+                let mut left = m1.is_present("left");
+                if !(right || left) {
+                    right = true;
+                    left = true
+                }
+                Self::trim_by_terminal_gaps(input, sink, left, right)?;
             }
         }
         Ok(())

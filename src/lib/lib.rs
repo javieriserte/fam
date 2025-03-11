@@ -1025,6 +1025,7 @@ pub mod seqs {
         }
     }
 
+    #[derive(Clone, Debug)]
     pub struct Alignment {
         pub (crate) seqs: SequenceCollection,
         // The numner of columns of the MSA
@@ -1180,7 +1181,7 @@ pub mod seqs {
             }
         }
     }
-    
+
     impl Default for Alignment {
         fn default() -> Self {
             Self::new()
