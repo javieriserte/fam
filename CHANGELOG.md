@@ -2,11 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version 0.0.12 - 2025-02-25
+## Version 0.0.13 - 2025-02-25
 
 ## New features
 
-
+- [#39] Trim by terminal gaps.
 - [#30] Added trim command.
 - [#27] Added backend to implement i18n translations.
 - [#34] Combine command groups concat, join and merge
